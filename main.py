@@ -2,7 +2,10 @@ import logging
 from fastapi import FastAPI, UploadFile, Form
 from pydantic import BaseModel
 
-import service.retrieve.retrieve as rt
+import service.retriever.retriever as rag
+import service.chat.chat as ct
+import zeroShot.zeroShot as zs
+import fewShot.fewShot as fs
 
 app = FastAPI()
 
@@ -13,12 +16,39 @@ logger = logging.getLogger(__name__)
 class QuestionRequest(BaseModel):
     question: str
 
-class RAGAssistant:
-    @app.post("/ask/")
-    async def get_answer(request: QuestionRequest):
-        question = request.question
-        answer =  rt.retrieve().get_answer(question)
-        return {"answer": answer}
+class final:
+    @app.post("/rag/")
+    async def get_rag(request: QuestionRequest):
+        try:
+            question = request.question
+            prompt = rag.retrieve().get_prompt(question)
+            answer = ct.chat().chat(prompt)
+            return {"answer": answer}
+        except Exception as e:
+            logger.error(f"获取答案失败: {str(e)}")
+            return {"error": f"抱歉，无法回答您的问题。错误信息: {str(e)}"}
+
+    @app.post("/zeroshot/")
+    async def get_zero_shot(request: QuestionRequest):
+        try:
+            question = request.question
+            prompt = zs.zeroShot().get_prompt(question)
+            answer = ct.chat().chat(prompt)
+            return {"answer": answer}
+        except Exception as e:
+            logger.error(f"获取答案失败: {str(e)}")
+            return {"error": f"抱歉，无法回答您的问题。错误信息: {str(e)}"}
+
+    @app.post("/fewshot/")
+    async def get_few_shot(request: QuestionRequest):
+        try:
+            question = request.question
+            prompt = fs.fewShot().get_prompt(question)
+            answer = ct.chat().chat(prompt)
+            return {"answer": answer}
+        except Exception as e:
+            logger.error(f"获取答案失败: {str(e)}")
+            return {"error": f"抱歉，无法回答您的问题。错误信息: {str(e)}"}
 
 
 if __name__ == "__main__":
