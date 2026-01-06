@@ -15,8 +15,7 @@
 
 ### 环境要求
 
-- Python 3.9 或更高版本
-- `pip`（Python 包管理器）
+- Python 3.8 或更高版本
 
 ### 安装步骤
 
@@ -24,7 +23,7 @@
 
 2. 安装依赖：
 
-   pip install -r requirements.tx
+   pip install -r requirements.txt
 
 3. 配置 .env 文件： 
    将 envTemplate 文件复制为 .env
