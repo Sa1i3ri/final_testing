@@ -6,7 +6,7 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
+model = 'qwen-max'
 class chat:
     def __init__(self):
         self.client = None
@@ -23,7 +23,7 @@ class chat:
         try:
             llm_params = {
                 "api_key": self.api_key,
-                "model": os.getenv("LLM_MODEL_NAME", "qwen-max")
+                "model": os.getenv("LLM_MODEL_NAME", model)
             }
 
             env_model_url = os.getenv("LLM_MODEL_URL")
@@ -49,7 +49,7 @@ class chat:
     def chat(self, messages):
         try:
             result = self.client.chat.completions.create(
-                model="qwen-plus",
+                model=model,
                 messages=messages
             )
             return result

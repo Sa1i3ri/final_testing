@@ -1,19 +1,63 @@
 import pandas as pd
+import service.chat.chat as ct
+import os
 
-def filter_csv():
+def filter_csv_stars():
     # 读取原始 CSV 文件
-    input_file = "/data.csv"  # 替换为你的文件名
-    output_file = "/filtered_data.csv"  # 输出文件名
+    input_file = "D:\Code\Final\\final\\data.csv"  # 替换为你的文件名
+    output_file = "D:\Code\Final\\final\\filtered_100stars_data.csv"  # 输出文件名
 
     # 加载 CSV 文件到 DataFrame
     df = pd.read_csv(input_file, encoding='latin1')
 
     # 筛选出 stars > 1000 的条目
-    filtered_df = df[df['stars'] > 1000]
+    filtered_df = df[df['stars'] > 100]
 
     # 将筛选后的数据存储到新的 CSV 文件
     filtered_df.to_csv(output_file, index=False)
 
     print(f"筛选后的数据已保存到 {output_file}")
 
-filter_csv()
+def split_adr_content(md_content):
+    # Find the start of the "Context" and "Decision" sections
+    context_start = md_content.find("Context")
+    decision_start = md_content.find("Decision")
+
+    # Extract the content for each section
+    context = md_content[context_start:decision_start].strip()
+    decision = md_content[decision_start:].strip()
+
+    return context, decision
+
+def str_to_bool(s: str) -> bool:
+    return s.lower() in ['true', '1', 'yes', 'y']
+
+def filter_csv_content():
+    # 读取原始 CSV 文件
+    input_file = "D:\Code\Final\\final\\filtered_100stars_data.csv"  # 替换为你的文件名
+    output_file = "D:\Code\Final\\final\\filtered_100stars_final_data.csv"  # 输出文件名
+    df = pd.read_csv(input_file, encoding='latin1')
+    chat = ct.chat()
+    num = 0
+    # 遍历每一条记录
+    for i, row in df.iterrows():
+        content = row['md_content']
+        context, decision = split_adr_content(content)
+        custom_prompt = [
+            {"role": "system",
+             "content": "This is an architecture decision record. Determine if the ADR is of good quality, which means it detailed explained the decision-making process and reasons, rather than just stating what tools were used. If the quality is good, return true; otherwise, return false."},
+            {"role": "user",
+             "content": f"## Context \n{context}\n\n## Decision \n{decision}"}
+        ]
+        answer = str_to_bool(chat.chat(custom_prompt).choices[0].message.content.strip().lower())
+        print(f"Row {i} - Quality Check: {answer}")
+        if answer:
+            num += 1
+            print(f"Accepted rows count: {num}")
+            # 将满足条件的行追加到新的 CSV 文件
+            row.to_frame().T.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
+
+
+
+filter_csv_content()
+
