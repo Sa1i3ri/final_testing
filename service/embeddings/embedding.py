@@ -77,7 +77,6 @@ class RAGEmbedding:
             raise
 
     def create_vector_store(self):
-        """创建或加载向量存储"""
         try:
             index_path = self.local_faiss_index_path
             if os.path.exists(index_path):
