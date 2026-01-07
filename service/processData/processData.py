@@ -20,16 +20,16 @@ def filter_csv_stars():
 
 # Extract the content for each section
 def extract_section(md_content, start, section_name):
-    next_section_start = md_content.find("## ", start + len(section_name))
+    next_section_start = md_content.find("##", start + 3)
     if next_section_start == -1:  # If no next section header is found, take the rest of the content
-        return md_content[start + len(section_name):].strip()
-    return md_content[start + len(section_name):next_section_start].strip()
+        return md_content[start :].strip()
+    return md_content[start:next_section_start].strip()
 
 
 def split_adr_content(md_content):
     # Find the start of the "Context" and "Decision" sections
-    context_start = md_content.find("Context")
-    decision_start = md_content.find("Decision")
+    context_start = md_content.find("## Context")
+    decision_start = md_content.find("## Decision")
 
     context = extract_section(md_content, context_start, "Context")
     decision = extract_section(md_content, decision_start, "Decision")
