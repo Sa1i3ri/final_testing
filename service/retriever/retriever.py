@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import logging
 import service.embeddings.embedding as em
+from service.processData.processData import split_adr_content
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -14,16 +15,6 @@ class retrieve:
         load_dotenv()
 
 
-    def split_adr_content(self,md_content):
-        # Find the start of the "Context" and "Decision" sections
-        context_start = md_content.find("Context")
-        decision_start = md_content.find("Decision")
-
-        # Extract the content for each section
-        context = md_content[context_start:decision_start].strip()
-        decision = md_content[decision_start:].strip()
-
-        return context, decision
 
     def get_prompt(self, question):
         try:
@@ -37,7 +28,7 @@ class retrieve:
             ]
 
             for doc in source_documents:
-                context_part, decision_part = self.split_adr_content(doc.page_content)
+                context_part, decision_part = split_adr_content(doc.page_content)
                 custom_prompt.append({"role": "system", "content": f"## Context \n{context_part}"})
                 custom_prompt.append({"role": "assistant", "content": f"## Decision \n{decision_part}"})
             custom_prompt.append({"role": "user", "content": f"## Context \n{question}"})

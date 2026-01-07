@@ -22,7 +22,7 @@ class final:
         try:
             question = request.question
             prompt = rag.retrieve().get_prompt(question)
-            answer = ct.chat().chat(prompt)
+            answer = ct.chat(model="qwen-plus").chat(prompt)
             return {"answer": answer}
         except Exception as e:
             logger.error(f"获取答案失败: {str(e)}")
@@ -33,7 +33,7 @@ class final:
         try:
             question = request.question
             prompt = zs.zeroShot().get_prompt(question)
-            answer = ct.chat().chat(prompt)
+            answer = ct.chat(model="qwen-plus").chat(prompt)
             return {"answer": answer}
         except Exception as e:
             logger.error(f"获取答案失败: {str(e)}")
@@ -44,7 +44,7 @@ class final:
         try:
             question = request.question
             prompt = fs.fewShot().get_prompt(question)
-            answer = ct.chat().chat(prompt)
+            answer = ct.chat(model="qwen-plus").chat(prompt)
             return {"answer": answer}
         except Exception as e:
             logger.error(f"获取答案失败: {str(e)}")

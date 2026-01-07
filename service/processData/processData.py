@@ -18,14 +18,21 @@ def filter_csv_stars():
 
     print(f"筛选后的数据已保存到 {output_file}")
 
+# Extract the content for each section
+def extract_section(md_content, start, section_name):
+    next_section_start = md_content.find("## ", start + len(section_name))
+    if next_section_start == -1:  # If no next section header is found, take the rest of the content
+        return md_content[start + len(section_name):].strip()
+    return md_content[start + len(section_name):next_section_start].strip()
+
+
 def split_adr_content(md_content):
     # Find the start of the "Context" and "Decision" sections
     context_start = md_content.find("Context")
     decision_start = md_content.find("Decision")
 
-    # Extract the content for each section
-    context = md_content[context_start:decision_start].strip()
-    decision = md_content[decision_start:].strip()
+    context = extract_section(md_content, context_start, "Context")
+    decision = extract_section(md_content, decision_start, "Decision")
 
     return context, decision
 
@@ -37,7 +44,7 @@ def filter_csv_content():
     input_file = "D:\Code\Final\\final\\filtered_100stars_data.csv"  # 替换为你的文件名
     output_file = "D:\Code\Final\\final\\filtered_100stars_final_data.csv"  # 输出文件名
     df = pd.read_csv(input_file, encoding='latin1')
-    chat = ct.chat()
+    chat = ct.chat("qwen-plus")
     num = 0
     # 遍历每一条记录
     for i, row in df.iterrows():
@@ -45,7 +52,7 @@ def filter_csv_content():
         context, decision = split_adr_content(content)
         custom_prompt = [
             {"role": "system",
-             "content": "This is an architecture decision record. Determine if the ADR is of good quality, which means it detailed explained the decision-making process and reasons, rather than just stating what tools were used. If the quality is good, return true; otherwise, return false."},
+             "content": "This is an architecture decision record. Determine if the ADR is of good quality,instead of just stating what tools were used. If the quality is good, return true; otherwise, return false."},
             {"role": "user",
              "content": f"## Context \n{context}\n\n## Decision \n{decision}"}
         ]
@@ -59,5 +66,4 @@ def filter_csv_content():
 
 
 
-filter_csv_content()
 
