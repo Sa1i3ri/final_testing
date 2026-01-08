@@ -12,11 +12,10 @@ class RAGEmbedding:
     def __init__(self):
         self.embeddings = None
         self.local_faiss_index_path = None
-        self.load_env()# 存 HuggingFace 句向量模型
         self.local_data = None
+        self.load_env()# 存 HuggingFace 句向量模型
         env_model_path = os.getenv("LOCAL_EMBEDDING_MODEL_PATH")
         self.initialize_embeddings(env_model_path)
-        self.load_csv_documents(self.local_data)
 
     def load_env(self):
         load_dotenv()
@@ -49,8 +48,8 @@ class RAGEmbedding:
             # 读取CSV内容
             import csv
             with open(csv_file_path, mode='r', encoding='latin1') as file:
-                reader = csv.DictReader(file)
-                for row in reader:
+                reader = list(csv.DictReader(file))  # 将数据加载为列表
+                for row in reader[:-100]:  # 跳过最后100条数据
                     md_content = row.get("md_content", "").strip()
 
                     if md_content:
@@ -85,12 +84,13 @@ class RAGEmbedding:
                 logger.info(f"成功加载本地向量存储: {index_path}")
                 return vector_store
             else:
+                self.load_csv_documents(self.local_data)
                 if not self.documents:
                     raise ValueError("没有可处理的文档，请先加载文档")
 
                 # 创建新的向量存储
                 vector_store = FAISS.from_texts(texts=self.documents, embedding=self.embeddings)
-                vector_store.save_vector_store(index_path)
+                self.save_vector_store(vector_store,index_path)
                 logger.info(f"向量存储创建成功，包含 {len(self.documents)} 个文本块")
                 return vector_store
 

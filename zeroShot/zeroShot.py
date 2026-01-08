@@ -1,9 +1,11 @@
 import logging
 
+from service.PromptProvider import PromptProvider
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-class zeroShot:
+class zeroShot(PromptProvider):
     def get_prompt(self, question):
         try:
             custom_prompt = [

@@ -21,7 +21,7 @@ class final:
     async def get_rag(request: QuestionRequest):
         try:
             question = request.question
-            prompt = rag.retrieve().get_prompt(question)
+            prompt = rag.retriever().get_prompt(question)
             answer = ct.chat(model="qwen-plus").chat(prompt)
             return {"answer": answer}
         except Exception as e:

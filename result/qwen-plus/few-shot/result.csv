@@ -1,0 +1,2182 @@
+context,decision,predicted_decision
+"## Context
+
+Primer React components was originally released without TypeScript type definitions, making it difficult for engineers to consume the library in TypeScript applications. In [July 2019](https://github.com/primer/react/commit/2983c935ea9ad600c04078adb25e40c3624c11fa#diff-7aa4473ede4abd9ec099e87fec67fd57afafaf39e05d493ab4533acc38547eb8), we created an [ambient declaration](https://www.geeksforgeeks.org/typescript-ambients-declaration/) file (`index.d.ts`) file to provide type definitions for TypeScript applications without having to rewrite Primer React components in TypeScript.
+
+`index.d.ts` has been an effective stopgap, enabling teams to build complex applications with Primer React components and TypeScript. However, because `index.d.ts` is disconnected from the implementation code, we've struggled to keep the type definitions up-to-date and accurate, as evidenced by [many](https://github.com/primer/react/issues/906) [TypeScript](https://github.com/primer/react/issues/540) [bug](https://github.com/primer/react/issues/520) [reports](https://github.com/primer/react/issues/534). As the library continues to grow in size and complexity, manually maintaining type definitions will become unsustainable.","## Decision
+We will incrementally migrate Primer React components to TypeScript. This approach will allow us to convert components file-by-file, ensuring type safety and alignment between implementation and type definitions without a risky, large-scale rewrite. Each converted component will no longer rely on the ambient `index.d.ts` declarations, reducing technical debt and improving developer experience. The migration will be tracked via a dedicated GitHub project board, with priority given to frequently used or recently modified components.","## Decision
+
+We will rewrite Primer React components in TypeScript."
+"## Context
+
+Throughout the last few years folks from the Design Infrastructure, Web Systems, and UI Platform teams have discussed the idea of using custom elements for behaviors in Primer React. The main goal of using custom elements in Primer React is to be able to author behaviors once and reuse them in any framework. Several experiments have been conducted which are listed above.","## Decision  
+We will adopt custom elements as the standard mechanism for implementing reusable behaviors in Primer React. This approach enables framework-agnostic behavior encapsulation, allowing consistent functionality across different tech stacks while maintaining interoperability with React. The implementation will follow established web standards and be documented in the Primer React design system documentation. [Related experiments](https://github.com/primer/react/issues?q=is%3Aissue+custom+elements)",## Decision
+"## Context
+
+Our component prop APIs have, at times been a bit of a mess. We've seen:
+
+- Implicit conventions not documented anywhere but consistently reflected in our code (e.g., the type of the `sx` prop)
+- Explicit plans to change some of those (e.g., the deprecation of Styled System props)
+- Inconsistencies in our implementation (e.g., when components accept a `ref` prop)
+
+This ADR aims to unify some of these conversations about prop APIs, codify our decisions, and sequence the work to get there.","## Decision  
+We will standardize and document our component prop APIs by adopting the following principles and actions:
+
+1. **Adopt `sx` for style extensions**: All components will support an `sx` prop of type `SystemStyleObject` (from `@styled-system/styled`) to enable consistent, theme-aware styling. This replaces ad-hoc style props and aligns with our design system.
+
+2. **Deprecate Styled System props**: We will phase out boolean props that directly map to CSS (e.g., `mt`, `mb`, `p`, `bg`) in favor of using the `sx` prop. New components will not include these props, and existing uses will be migrated incrementally with deprecation warnings.
+
+3. **Ensure `ref` forwarding where applicable**: Components that render DOM elements must forward refs using `React.forwardRef`. The API contract will clearly specify whether a component accepts a `ref` and what it refers to (e.g., the root element).
+
+4. **Document prop conventions in Storybook**: All prop API decisions will be codified in a new “Component Guidelines” section in Storybook, including usage examples, rationale, and migration guidance.
+
+5. **Enforce via linting and code reviews**: We will introduce ESLint rules (where feasible) and PR checklist items to ensure compliance with the standardized prop API.
+
+Migration will be tracked via a dedicated GitHub project board, with high-traffic components prioritized first.",## Decision
+"## Context
+
+In Primer React and consuming applications, we use many different patterns for creating React components. Two common patterns are:
+
+1. Creating components with styled-components
+
+   ```tsx
+   const Avatar = styled.img.attrs<StyledAvatarProps>(props => ({
+     height: props.size,
+     width: props.size,
+   }))<StyledAvatarProps>`
+     display: inline-block;
+     overflow: hidden;
+     line-height: ${get('lineHeights.condensedUltra')};
+     border-radius: ${props => getBorderRadius(props)};
+     ${sx}
+   `
+   ```
+
+   [Show full code example ÃÂ¡ÃÂº](https://github.com/primer/react/pull/2019/files?diff=split&w=0)
+
+2. Creating components with Box
+
+   ```tsx
+   const Avatar: React.FC<AvatarProps> = ({size = 20, alt = '', square = false, sx = {}, ...props}) => {
+     const styles: BetterSystemStyleObject = {
+       display: 'inline-block',
+       overflow: 'hidden',
+       lineHeight: 'condensedUltra',
+       borderRadius: getBorderRadius({size, square}),
+     }
+
+     return (
+       <Box
+         as=""img""
+         alt={alt}
+         sx={merge<BetterSystemStyleObject>(styles, sx)} // styles needs to merge with props.sx
+         {...props}
+       />
+     )
+   }
+   ```
+
+   [Show full code example ÃÂ¡ÃÂº](https://github.com/primer/react/pull/2019/files?diff=split&w=0)
+
+&nbsp;","## Decision  
+We will standardize on using **Box with `sx` prop** as the preferred pattern for creating React components in Primer React. This approach provides a more consistent, accessible, and maintainable API by leveraging Primer’s design system tokens directly, avoiding the complexity and potential runtime issues of `styled-components` attribute manipulation and interpolation. It also aligns with our long-term goal of reducing reliance on `styled-components` for new components, favoring utility-first composition over CSS-in-JS abstraction. Existing `styled-components` usages will be migrated incrementally as part of component updates or refactors.","## Decision
+
+Prefer using method #2: Creating components with Box for the following reasons:
+
+- Better authoring experience with Typescript. With Box, we can improve the API and autocomplete for consuming primitives. [See research](https://github.com/github/primer/discussions/755#discussioncomment-2318144)
+- The styling library (i.e. styled-components) becomes an implementation detail and can be changed later with minimal breaking changes for consumers. (Avoids leaky abstractions)
+- We have had issues with exporting types, we can increase confidence by keeping the exported types close to what we author.
+
+See diff for moving Avatar from approach 1 to 2: https://github.com/primer/react/pull/2019/files?diff=split&w=0"
+,"## Decision 
+Please provide a context for the architectural decision you'd like me to document.","## Decision:
+
+1. Prefer using children for ÃÂ¡ÃÂ°contentÃÂ¡ÃÂ±
+
+2. For composite components, the API should be decided by how much customisation is available for children.
+
+For components that have design decisions baked in, should use strict props. For example, the color of the icon inside a Button component is decided by the `variant` prop on the Button. The API does not allow for changing that.
+
+```jsx
+<Button variant=""danger"" leadingIcon={TrashIcon}>
+  Delete branch
+</Button>
+```
+
+On the other hand, if we want consumers to have more control over children, a composite API is the better choice.
+
+```jsx
+<ActionList.Item>
+  <ActionList.LeadingVisual>
+    <Avatar src=""https://github.com/mona.png"" />
+  <ActionList.LeadingVisual>
+  mona
+</ActionList.Item>
+```"
+"## Context
+
+As we work on maturity of our components, we will sometimes need to build components in a parallel track/bundle without breaking existing components. Eventually, the new components would replace the old ones in the main bundle.","## Decision  
+We will implement a feature flag–driven component registry that allows parallel development and deployment of new components alongside existing ones. New components will be developed in isolation, registered under a unique identifier, and toggled on via feature flags per environment or audience segment. This registry will be integrated into the build pipeline to ensure only one version of a component is included in the final bundle based on active flags. Promotion of new components to replace old ones will occur by flipping the corresponding feature flag after validation, enabling zero-downtime migration and rollback capability. Documentation and deprecation policies for retired components will be enforced through automated checks in CI/CD.",
+"## Context
+
+`Drafts` were introduced in [ADR-006](./adrs/adr-006-drafts.md) as a way of creating components outside of the root bundle of `@primer/react`. This helps us create, test and maintain multiple versions of the same component in parallel.
+
+Example:
+
+```js
+// default version of component exported from root of package
+import {UnderlineNav} from '@primer/react'
+
+// new version of component exported from /drafts
+import {UnderlineNav} from '@primer/react/drafts'
+```
+
+We have also used this method for components that are still a work in progress and we don't want developers to start using them in production without collaborating with us first.
+
+Example:
+
+```js
+// this component only exists in drafts and not in the roof of the package
+import {TreeView} from '@primer/react/drafts'
+```","## Decision
+We will continue using the `drafts` directory to isolate experimental or in-progress components within `@primer/react`. This approach enables parallel development, versioning, and controlled exposure of new or unstable components without impacting the stable public API. Components remain in `drafts` until they are finalized through design review, user feedback, testing, and documentation. Once stabilized, they will be promoted to the root export. Public usage of `drafts` exports is discouraged and done at the consumer’s risk, with clear documentation indicating instability and potential breaking changes.","## Decision
+
+We should drop the `draft` label and use `experimental` instead.
+
+While not completely accurate (UnderlineNav2 is much more polished than `experimental` maturity), the lack of confusion makes it a good trade-off.
+
+Fine-grained information about component maturity, useful for maintainers, is also communicated by the [status checklist in the component documentation](https://primer.style/react/drafts/UnderlineNav2#status)."
+"## Context
+
+[Snapshot testing](https://jestjs.io/docs/snapshot-testing) is a strategy that allows a developer to ""snapshot"" a given value within a test suite. This value could be a primitive within JavaScript, an Array, an object, or the resulting HTML of rendering a component in React. The snapshot of the value is stored within the repo and is then compared against future test runs.
+
+When a change is detected to a snapshot, the test will fail with a diff between the currently stored snapshot and the new snapshot. Within the space of React components, this may happen when a class name changes or the markup of a component changes. Is is then up to the developer to decide if the change is intentional and whether or not to accept this new snapshot as the baseline for future test runs.
+
+A common practice is to snapshot a React component which will capture the HTML output of rendering a component. For example:
+
+```jsx
+import renderer from 'react-test-renderer'
+import Link from '../Link'
+
+it('renders correctly', () => {
+  const tree = renderer.create(<Link page=""http://www.facebook.com"">Facebook</Link>).toJSON()
+  expect(tree).toMatchSnapshot()
+})
+```
+
+```js
+exports[`renders correctly 1`] = `
+<a
+  className=""normal""
+  href=""http://www.facebook.com""
+  onMouseEnter={[Function]}
+  onMouseLeave={[Function]}
+>
+  Facebook
+</a>
+`
+```
+
+[Source](https://jestjs.io/docs/snapshot-testing#snapshot-testing-with-jest)
+
+As the number of snapshots within a project grows, there are a couple of challenges that emerge:
+
+- Components with wide or deep trees emit large snapshots
+- Debugging what change lead to a broken snapshot can be difficult
+- It is unclear what the intent may be of a snapshot test when something does fail, in other words it does not always answer the question: what is this testing?","## Decision
+We will limit the use of snapshot testing for React components to cases where the component output is small, stable, and its structure is critical to correctness (e.g. shared UI primitives like buttons or form elements). For larger or more dynamic components, we will favor explicit assertions using [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) that test specific behaviors and accessible outputs (e.g. text content, ARIA attributes, element roles).
+
+When snapshot tests are used, they must be accompanied by clear inline comments explaining the intent of the test and what aspects of the output are being verified. We will also enforce snapshot file size limits via linting rules to prevent excessively large snapshots.
+
+This approach balances the convenience of snapshot testing with maintainability, clarity, and focused testing practices.","## Decision
+
+- Avoid using ""catch-all"" snapshot tests for React components
+- Snapshots may be used for static objects which have a clear signal as to what to do if they are modified (such as the exports of a package)
+
+<table>
+<thead><tr><th>Unpreferred</th><th>Preferred</th></tr></thead>
+<tbody>
+<tr><td>
+
+```tsx
+it('renders correctly', () => {
+  const tree = renderer.create(<Link page=""http://www.github.com"">GitHub</Link>).toJSON()
+  expect(tree).toMatchSnapshot()
+})
+```
+
+</td><td>
+
+```tsx
+it('renders an element with role=""link""', () => {
+  render(<Link page=""http://www.github.com"">GitHub</Link>)
+  expect(screen.getByRole('link', {name: 'GitHub'})).toBeInTheDocument()
+})
+```
+
+</td></tr>
+</tbody></table>"
+"## Context
+
+There are situations where we would like to provide warnings to developers who
+use `@primer/react` that something may be deprecated, unsupported, etc. Often,
+these will be emitted using `console.warn()`. When using `console.warn()` by
+itself, we run into a situation where code that is only meant for development
+is included in production code. As a result, it would be helpful to establish
+patterns around how to provide warnings to developers in order to make sure
+that:
+
+- Calls to `console.warn()` do not appear in production
+- Code related to development checks, warnings, or messages are removed from
+  production code","## Decision  
+We will use `process.env.NODE_ENV` checks to conditionally include developer warnings in development builds only. All calls to `console.warn()` for deprecation notices, unsupported feature warnings, or other developer-facing messages must be wrapped in `if (process.env.NODE_ENV !== 'production')` blocks. Additionally, we will leverage webpack's `DefinePlugin` (or equivalent in the build tooling) to statically replace `process.env.NODE_ENV` during bundling, ensuring that dead code elimination removes these warning blocks and associated logic from production bundles. This approach guarantees that development-only checks and warnings are excluded from production builds while remaining visible and actionable during development.","## Decision
+
+Code that is meant for development-only warnings or checks **must** be wrapped within a
+`__DEV__` block.
+
+```tsx
+function ExampleComponent() {
+  if (__DEV__) {
+    // This code only runs in development
+  }
+}
+```
+
+Under-the-hood, the `__DEV__` block will be compiled to a `NODE_ENV` check so
+that it is stripped when `NODE_ENV` is set to `'production'`.
+
+> **Note**
+> Contributors may wrap hooks within a `__DEV__` block even though hooks are not
+> meant to be called conditionally. This is because the `__DEV__` check can be
+> considered constant in that it will always be true or false for the
+> environment (development or production).
+
+When a contributor would like to communicate a warning to a developer, they
+should use the `warning()` helper.
+
+```ts
+warning(condition, 'This is the message that is logged when condition is truth-y')
+```
+
+This helper allows you to provide a `condition`. When the condition is truth-y
+it will emit the message provided. This helper is automatically wrapped in a
+`__DEV__` block and will be removed from production builds.
+
+For more complex conditions, a contributor may combine `console.warn()` with
+`__DEV__` when `warning()` does not suffice."
+"## Context
+
+Our testing infrastructure consists of Jest ""unit"" tests and automatic Chromatic visual testing. Both of these are super useful but we have been experiencing a few setbacks.
+Unofficially we test more complex interactive scenarios using our storybooks setup.
+
+1. Repeated markup in storybooks and jest tests - Since there is not automation of interaction in storybooks, we tend to test them out manually in stories and then transfer to jest. This results in us constructing similar test case scenarios in storybooks and in tests.
+
+2. Debugging complex jest tests - There is no visual aspect to jest tests. Mostly everything is CLI based. This makes it hard to debug broken tests. Visibility into these tests is also low for people who want to enhance them.","## Decision  
+We will adopt [Testing Library](https://testing-library.com/) with [Jest DOM](https://github.com/testing-library/jest-dom) for component and integration testing, and integrate [Playwright](https://playwright.dev/) for end-to-end and complex interactive scenario testing. We will refactor existing Jest unit tests to use Testing Library where applicable, and gradually migrate complex interaction tests from manual Storybook verification to automated Playwright tests. This setup will allow us to reduce duplication between Storybook and test code, improve test maintainability, and provide better debugging capabilities through visual and browser-based testing. Additionally, we will configure Playwright to integrate with Chromatic for visual regression testing, creating a unified feedback loop for UI changes.","## Decisions
+
+Going forward, we can use [storybook's play functions](https://storybook.js.org/docs/react/writing-stories/play-function) to write interaction tests for our components. Here's a document that describes [how to add and run these tests](../storybook-tests.md).
+Guidelines to make this easier -
+
+1. Create a new storybook file for your components and call them ""interactions"". Inside these files, we can import the stories from ""examples"" or ""fixtures"" and tack on play functions to them. This will create duplicate stories but with the added benefit of the tests appearing in the interactions add-on tab. This tab will let you step through your tests step by step, increasing visibility and debuggability.
+
+2. Port complex jest tests onto interactive tests. This is up to developer discretion. My recommendation is to have basic ""unit"" tests like component existence and axe tests in jest. Anything that can benefit from a visual aspect to it can be moved to interaction tests.
+
+3. Interaction tests are not perfect. Some aspects like mocking can be challenging and we will find solutions to these as when the need arises."
+"## Context
+
+While [ADR 002](https://github.com/primer/react/blob/main/contributor-docs/adrs/adr-002-behavior-isolation.md) landed on the decision to:
+
+- Share JavaScript behaviour as ""vanilla"" functions which can be used between Primer View Components (PVC) and Primer React (PRC), consumed via React Hooks in PRC.
+- Not use Custom Elements to drive behaviour of components.
+
+Our perspective on the ADR has changed since its approval and this document will address those changes.","## Decision  
+We will revisit the decision outlined in ADR 002 and explore the use of Custom Elements as a mechanism to encapsulate and share behavior between Primer View Components (PVC) and Primer React (PRC). While ADR 002 favored vanilla JavaScript functions consumed via React Hooks, we now recognize that Custom Elements offer better encapsulation, improved cross-framework interoperability, and a more sustainable path for long-term maintenance across diverse consumer environments. We will conduct a series of experiments to evaluate the impact of using Custom Elements on bundle size, performance, and developer experience before finalizing a new standard. Outcomes will be documented and used to inform an updated ADR.",## Decision
+"## Context
+
+> tl;dr
+>
+> We have workspaces within the project but no official way of connecting them or managing dependencies from the top-level. Similarly, scripts that grow in size or complexity have no dedicated home or ability to manage dependencies outside of the top-level workspace.
+
+The `primer/react` repo is composed of several workspaces that use `npm` to manage dependencies. In order to install these dependencies, a contributor needs to visit each directory and run `npm install`. The project also has a convenience script for this task, invoked through `npm run setup`, that goes through this process for contributors.
+
+These distinct workspaces may sometimes depend on each other. For example, the `docs` workspace depends on the `@primer/react` package which is defined at the top-level of the project. Similarly, examples in the `examples/*` folders may also depend on `@primer/react`. Currently these dependencies are expressed either through relative paths, file dependencies in `package.json`, or symlinks through `npm link`.
+
+There is also a collection of scripts under the `script` directory that exist in the project that involve varying levels of complexity and depth.","## Decision 
+We will adopt npm workspaces to manage dependencies and interdependencies between packages in the project. This will allow us to define all workspaces in a single `package.json` at the root, run commands like `npm install` once to install all dependencies across workspaces, and automatically link local packages (e.g., `@primer/react`) without relying on relative paths, file dependencies, or manual `npm link` steps.
+
+Additionally, we will formalize the `scripts/` directory as the dedicated location for shared, reusable, and complex build, release, and maintenance scripts. These scripts will be executable via npm run-scripts defined in the root `package.json`, enabling consistent invocation and version control alongside the code they support. Dependencies required by these scripts will be installed at the root level where appropriate, ensuring reliability and reducing duplication.","## Decision
+
+Setup the project to use [`npm` workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces). This will require changing the project to have a top-level `package.json` file which will use `workspaces` to reference child workspaces. The layout for the project would then be:
+
+```
+- root
+  # Root package.json, defines workspaces
+  - package.json
+
+  # Workspaces
+  - docs
+  - packages
+    - react
+    - *
+  - examples
+    - nextjs
+    - consumer-test
+    - *
+
+  # Top-level scripts
+  - script
+
+  # Testing & Development
+  - .storybook
+  - .playwright
+
+  # Repo config
+  - .github
+  - .vscode
+```
+
+The following items will be installed and ran at the root-level:
+
+- Linting
+  - `eslint`
+  - `markdownlint`
+- Testing
+  - Jest
+  - Playwright
+- Development
+  - Storybook
+- Type checking
+  - TypeScript
+
+Certain configuration items, like for TypeScript or Babel, may need configuration defined at the top-level and extended by child workspaces.
+
+The current `@primer/react` package will move to the `packages/react` package. Workspaces that depend on `@primer/react` should reference the version of that package."
+"## Context
+
+Currently all files live under the `src` directory. In the `npm` package for `@primer/react`, we specify the following export pattern:
+
+```json5
+{
+  exports: {
+    // ...
+    './lib-esm/*': {
+      import: [
+        // ...
+      ],
+      require: [
+        // ...
+      ],
+    },
+  },
+}
+```
+
+This pattern, along with our Rollup setup, opts-in files and folders under the `src` directory into the public API of the package. This means that certain parts of the codebase which aren't intended to be used outside of `@primer/react` are considered part of its public API and can be imported and used by consumers.","## Decision 
+We will introduce a new `internal` directory within `src` to explicitly separate internal implementation details from the public API. All files and folders intended for internal use only will be moved into `src/internal`. We will update the `exports` field in `package.json` to block access to this directory by default, ensuring that only explicitly exported paths under `./lib-esm/*` (excluding `internal`) are available to consumers. This change will be accompanied by updates to our Rollup configuration to respect the new structure and prevent accidental exposure of internal modules.","## Decision
+
+Adopt a convention in Primer React where internal modules live in the `src/internal` folder. This folder which would include all components, hooks, and other modules which are not intended for usage outside of the project. Files within `src/internal` may be grouped by area, such as `src/internal/components`, `src/internal/hooks`, etc.
+
+In the `""exports""` field of our `npm` package, we can then add the following pattern:
+
+```json5
+{
+  exports: {
+    // ...
+    './lib-esm/internal/*': null,
+  },
+}
+```
+
+This pattern would remove any files and folders within `src/internal` from the public API of the `npm` package. This pattern is inspired by [this section](https://nodejs.org/api/packages.html#package-entry-points) from Node.js, specifically this example:
+
+```json
+{
+  ""name"": ""my-package"",
+  ""exports"": {
+    ""."": ""./lib/index.js"",
+    ""./feature/*.js"": ""./feature/*.js"",
+    ""./feature/internal/*"": null
+  }
+}
+```"
+"## Context
+
+> **Note**
+> This ADR supercedes [`ADR 009`](./adr-009-interaction-tests.md)
+
+We author tests using a combination of Jest and Playwright. Typically, Jest is
+used for unit and integration tests and Playwright is used for Visual Regression
+Tests against our Storybook.
+
+In `ADR 009`, we proposed using Storybook's [`play`
+functions](https://storybook.js.org/docs/react/writing-stories/play-function) as
+the recommended way to author tests that require tests based on user
+interactions. In this ADR, we would like to revisit this decision.","## Decision
+We will use Playwright for all tests that require user interactions, including interaction-based tests previously proposed to be authored using Storybook's `play` functions. This change centralizes our end-to-end testing strategy under Playwright, ensuring consistency, better maintainability, and full control over browser behavior and state. Jest unit and integration tests will continue to be used for non-DOM or lightweight DOM testing, while visual regression tests will remain in Playwright against Storybook. This approach eliminates the fragmentation of interaction testing logic and aligns with our long-term goal of a unified, reliable, and scalable browser testing framework.","## Decision
+
+For tests involving interaction, use Playwright to visit a storybook story and
+interact with the component directly. This will allow for easy integration with
+Visual Regression Testing and our automated accessibility testing (through axe).
+In order to perform interactions, use [actions from
+Playwright](https://playwright.dev/docs/input)."
+"## Context
+
+There are situations where a component prop can support a value or a ""responsive
+value"" that results in the value changing depending on the viewport size. For
+example:
+
+```tsx
+// Value
+<Stack gap=""condensed"" />
+
+// Responsive value
+<Stack gap={{ narrow: 'condensed', regular: 'normal', wide: 'spacious' />
+```
+
+Typically, a responsive value will support all of our named breakpoints: narrow,
+regular, and wide. Authors can use a hook called `useResponsiveValue` to support
+resolving the value of a prop based on the current viewport size. The
+implementation of this hook uses [`matchMedia`](https://developer.mozilla.org/en-US/docs/Web/API/Window/matchMedia)
+which, unfortunately, has a downside: the value of a prop may shift when the
+component is server-side rendered. If the prop is used for styles or layout, then this will lead to a layout shift
+when the component hydrates and the viewport size is different than the fallback
+size on the server.
+
+As a result, we would like to offer a paved path for providing responsive props
+in a way tha twill not lead to layout shift during server-side rendering.","## Decision  
+We will adopt a mobile-first, static server rendering approach for responsive props by requiring all responsive value objects to define a `base` (or `mobile`) value alongside optional breakpoint overrides. The server-rendered output will always use the `base` value, ensuring consistent initial layout across devices. Client-side hydration will then apply viewport-appropriate values using `matchMedia` without causing layout shifts, as styling will already be scoped to the base case.
+
+We will update the `useResponsiveValue` hook to enforce this structure:
+
+```ts
+type Responsive<T> = T | { 
+  base: T; 
+  narrow?: T; 
+  regular?: T; 
+  wide?: T; 
+};
+
+// Example usage
+<Stack gap={{ base: 'condensed', regular: 'normal', wide: 'spacious' }} />
+```
+
+During server-side rendering, only the `base` value will be used. On the client, the hook will dynamically resolve the correct value based on media queries, applying changes in a way that avoids reflows (e.g., through style encapsulation or non-layout-affecting updates). This ensures visual stability while preserving full responsiveness post-hydration.
+
+Documentation and TypeScript types will be updated to guide authors toward this pattern, deprecating use of breakpoint-only responsive objects.","## Decision
+
+Authors should use data attributes to bridge between responsive values in
+JavaScript and the corresponding styles in CSS. Authors should avoid using
+JavaScript-driven mechanisms for controlling responsive values in order to
+prevent layout shift during SSR.
+
+For example, consider a `Stack` component that has a `gap` prop. This prop can
+receive a plain value or one that is a responsive value. To support this,
+authors should use the following patterns:
+
+```tsx
+type GapScale = 'none' | 'condensed' | 'normal' | 'spacious'
+
+type StackProps = React.PropsWithChildren<{
+  // Responsive props should be a union of the value of the prop plus
+  // `ResponsiveValue` over that value
+  gap?: GapScale | ResponsiveValue<GapScale>
+}>
+
+function Stack({children, gap}: StackProps) {
+  // The `getResponsiveAttributes` helper is useful for adding the corresponding
+  // `data-*` attributes to the container for the compnoent.
+  //
+  // In this case, it will add `data-gap` and `data-gap-{breakpoint}` attributes
+  // with the corresponding value set
+  return <StyledStack {...getResponsiveAttributes('gap', gap)}>{children}</StyledStack>
+}
+
+const StyledStack = styled.div`
+  &[data-gap='none'],
+  &[data-gap-narrow='none'] {
+    /* ... */
+  }
+
+  &[data-gap='condensed'],
+  &[data-gap-narrow='condensed'] {
+    /* ... */
+  }
+
+  /* ... */
+
+  // @custom-media --viewportRange-regular
+  @media (min-width: 768px) {
+    &[data-gap-regular='none'] {
+      /* ... */
+    }
+
+    &[data-gap-regular='condensed'] {
+      /* ... */
+    }
+
+    /* ... */
+  }
+
+  // @custom-media --viewportRange-wide
+  @media (min-width: 1400px) {
+    &[data-gap-wide='none'] {
+      /* ... */
+    }
+
+    &[data-gap-wide='condensed'] {
+      /* ... */
+    }
+
+    /* ... */
+  }
+`
+```
+
+By default, this approach uses the following conventions:
+
+- Props which may have responsive values should have a value that is
+  serializable, ideally as a `string` or `boolean`
+- Props will be provided on the component as a data attribute, using the format:
+  `data-{propName}`
+- For responsive values, the breakpoint name will be appended to the data
+  attribute name specified above. For example: `data-{propName}-{breakpoint}`
+
+Data attributes will act as a bridge between JavaScript and CSS. In CSS, authors
+should use these data attributes to apply styles based on the value of the
+attribute per-breakpoint.
+
+> [!NOTE]
+> There is a utility named `getResponsiveAttributes` that can be used to generate
+> the corresponding `data-*` attributes for the props which may have responsive
+> values."
+"## Context
+
+There are times when a prop is deprecated in favor of a more accessible API or a more flexible prop that can support a wider range of values. In these cases, we want to provide a clear path for authors to migrate from the deprecated prop to the new API.
+
+For
+example:
+
+```tsx
+// old API
+<ActionList>
+  <ActionList.Group title=""Group title"">
+    <ActionList.Item>Item 1</ActionList.Item>
+    <ActionList.Item>Item 2</ActionList.Item>
+  </ActionList.Group>
+</ActionList>
+```
+
+```tsx
+// new API
+<ActionList>
+  <ActionList.Group>
+    <ActionList.GroupHeading as=""h2"">Group title</ActionList.GroupHeading>
+    <ActionList.Item>Item 1</ActionList.Item>
+    <ActionList.Item>Item 2</ActionList.Item>
+  </ActionList.Group>
+</ActionList>
+```","## Decision 
+We will support the graceful deprecation of props by maintaining backward compatibility for one major version while logging a warning to guide developers toward the new API. Deprecated props will be documented as such in JSDoc comments and Storybook, clearly indicating their replacement. After one major version cycle, the deprecated prop will be removed in a subsequent major release following semantic versioning principles. Automated tests will be updated to reflect usage of the new API, and codemods may be provided to assist in large-scale migrations.","## Decision
+
+1. Add the `@deprecated` TS notice, if possible, to the corresponding type
+2. Mark the prop as deprecated in the component's documentation
+3. Add an eslint rule or extend an existing one to warn against using the deprecated prop
+4. Update the `primer/react` eslint plugin at github/github and evaluate the impact of the deprecation
+5. If the change is minimal and safe, proceed with the auto fix of the eslint rule and create PRs by codeowners
+6. If the change is large, add an eslint disable to each instance of the deprecated prop at github/github and make sure they show up on the accessibility score cards so that we can track the usage of the deprecated prop
+7. Enable the eslint rule afterwards in github/github so that the new instances of the deprecated prop are heavily discouraged"
+"## Context
+
+Compilation failures during a CI build should surface good error messages.
+
+For example, the actual compile errors from the typescript compiler should bubble as issues in the UI. And not simply ""tsc exited with exit code 1"".
+
+VSCode has an extensible model for solving this type of problem. VSCode allows users to configure which [problems matchers](https://code.visualstudio.com/docs/editor/tasks#_defining-a-problem-matcher) to use, when scanning output. For example, a user can apply the `tsc` problem matcher to receive a rich error output experience in VSCode, when compiling their typescript project.
+
+The problem-matcher concept fits well with ""setup"" actions. For example, the `setup-nodejs` action will download node.js, add it to the PATH, and register the `tsc` problem matcher. For the duration of the job, the `tsc` problem matcher will be applied against the output.","## Decision
+We will adopt problem matchers in our CI pipeline to improve the visibility and usability of compilation failure errors. Specifically, we will configure our workflows to use problem matchers—such as the `tsc` matcher—via GitHub Actions setup actions (e.g., `setup-node`). This ensures that compile-time errors from tools like TypeScript are parsed and surfaced as structured, actionable issues in the CI output and UI, similar to the experience in VSCode. This change will reduce debugging time and improve developer feedback during CI builds.",## Decision
+"## Context
+run-actions run scripts using a platform specific shell:
+`bash -eo pipefail` on non-windows, and `cmd.exe /c /d /s` on windows
+
+The `shell` option overrides this to allow different flags or completely different shells/interpreters
+
+A small example is:
+```yml
+jobs:
+  bash-job:
+    actions:
+    - run: echo ""Hello""
+      shell: bash
+  python-job:
+    actions:
+    - run: print(""Hello"")
+      shell: python {0}
+```","## Decision 
+We will standardize on using the `shell` option in GitHub Actions workflows to explicitly define the execution environment for run scripts. This ensures consistency across platforms and allows for greater flexibility in choosing interpreters or shells. For cross-platform compatibility, we will use `bash -eo pipefail` as the default shell configuration on non-Windows systems and ensure Windows-specific scripts use an appropriate alternative such as `pwsh` (PowerShell Core) for better script reliability and error handling. Custom shell configurations will be documented and reused via shared workflow templates.","## Decision
+
+___"
+"## Context
+
+User wants to reference workflow variables defined in workflow yaml file for action's input, displayName and condition.","## Decision 
+We will use GitHub Actions expression syntax to reference workflow variables in action inputs, `displayName`, and conditions. Variables defined in the workflow YAML can be accessed using the `env` context for environment variables or the `vars` context for custom variables. These expressions must be wrapped in `${{ }}` delimiters. This approach allows dynamic configuration of action behavior based on workflow-level definitions while maintaining readability and consistency across workflows. See [GitHub Actions documentation on contexts](https://docs.github.com/en/actions/learn-github-actions/contexts) for full details.",## Decision
+"## Context
+First party action `actions/cache` needs a input which is an explicit `key` used for restoring and saving the cache. For packages caching, the most common `key` might be the hash result of contents from all `package-lock.json` under `node_modules` folder.
+  
+There are serval different ways to get the hash `key` input for `actions/cache` action.
+
+1. Customer calculate the `key` themselves from a different action, customer won't like this since it needs extra step for using cache feature
+```yaml
+  steps:
+  - run: |
+      hash=some_linux_hash_method(file1, file2, file3)
+      echo ::set-output name=hash::$hash
+    id: createHash
+  - uses: actions/cache@v1
+    with:
+      key: ${{ steps.createHash.outputs.hash }}
+``` 
+
+2. Make the `key` input of `actions/cache` follow certain convention to calculate hash, this limited the `key` input to a certain format customer may not want.
+```yaml
+  steps:
+  - uses: actions/cache@v1
+    with:
+      key: ${{ runner.os }}|${{ github.workspace }}|**/package-lock.json
+```","## Decision 
+We will adopt a hybrid approach that balances usability and flexibility by extending the `actions/cache` with a custom wrapper action. This wrapper will automatically compute the cache key using a standardized hashing mechanism (e.g., SHA-256) over all `package-lock.json` files in the repository, while still allowing users to override the computed key via an optional input.
+
+The default behavior will eliminate the need for users to manually calculate keys in separate steps, improving ergonomics. At the same time, preserving the ability to specify a custom key ensures flexibility for advanced use cases.
+
+This solution avoids locking users into rigid key formats while minimizing configuration overhead, aligning with developer experience goals. The implementation will be documented in our CI best practices guide with examples for common scenarios.",## Decision
+"## Context
+
+Command echoing as a default behavior tends to clutter the user logs, so we want to swap to a system where users have to opt in to see this information.
+
+Command outputs will still be echoed in the case there are any errors processing such commands. This is so the end user can have more context on why the command failed and help with troubleshooting.
+
+Echo output in the user logs can be explicitly controlled by the new commands `::echo::on` and `::echo::off`. By default, echoing is enabled if `ACTIONS_STEP_DEBUG` secret is enabled, otherwise echoing is disabled.","## Decision 
+We will disable command echoing by default in user logs to reduce clutter, while retaining the ability to opt-in via `::echo::on` or through the `ACTIONS_STEP_DEBUG` secret. Command output will be automatically echoed when an error occurs during command execution to aid troubleshooting. Explicit control over echoing behavior will be supported using the `::echo::on` and `::echo::off` runtime commands.","## Decision
+- The only commands that currently echo output are
+  - `remove-matcher`
+  - `add-matcher`
+  - `add-path`
+- These will no longer echo the command, if processed successfully
+- All commands echo the input when any of these conditions is fulfilled:
+  1. When such commands fail with an error
+  2. When `::echo::on` is set
+  3. When the `ACTIONS_STEP_DEBUG` is set, and echoing hasn't been explicitly disabled with `::echo::off`
+- There are a few commands that won't be echoed, even when echo is enabled. These are (as of 2019/11/04):
+   - `add-mask`
+   - `debug`
+   - `warning`
+   - `error`
+- The three commands above will not echo, either because echoing the command would leak secrets (e.g. `add-mask`), or it would not add any additional troubleshooting information to the logs (e.g. `debug`). It's expected that future commands would follow these ""echo-suppressing"" guidelines as well. Echo-suppressed commands are still free to output other information to the logs, as deemed fit."
+"## Context
+
+The Runner registers a number of Value Encoders, which mask various encodings of a provided secret. Currently, we register a 3 base64 Encoders:
+- The base64 encoded secret
+- The secret with the first character removed then base64 encoded
+- The secret with the first two characters removed then base64 encoded
+
+This gives us good coverage across the board for secrets and secrets with a prefix (i.e. `base64($user:$pass)`).
+
+However, we don't have great coverage for cases where the secret has a string appended to it before it is base64 encoded (i.e.: `base64($pass\n))`). 
+
+Most notably we've seen this as a result of user error where a user accidentally appends a newline or space character before encoding their secret in base64.","## Decision 
+We will add two additional base64 encoders to the Runner's value encoder registry:
+- One that encodes the secret with a trailing newline (`\n`) appended before base64 encoding
+- One that encodes the secret with a trailing space (` `) appended before base64 encoding
+
+These additions will improve detection coverage for common user errors involving accidental whitespace suffixes, aligning with real-world usage patterns and improving the robustness of secret masking without introducing significant complexity or performance overhead.",## Decision
+"## Context
+
+- Provide a mechanism in the runner to include extra information in `Set up job` step's log.
+  Ex: Include OS/Software info from Hosted image.","## Decision 
+We will extend the runner's `Set up job` step to include a configurable log output mechanism that allows injection of environment metadata. This will be implemented by introducing a new `job-metadata` script in the runner initialization sequence, which reads from a predefined set of environment variables (e.g., `RUNNER_OS_INFO`, `RUNNER_SOFTWARE_INFO`) and logs key-value pairs in a structured format. The source of this data (e.g., hosted image inventory) will be responsibility of the image maintainers to inject at provision time. This approach ensures flexibility across environments while maintaining minimal overhead in the critical path of job setup.","## Decision
+
+The runner will look for a file `.setup_info` under the runner's root directory, The file can be a JSON with a simple schema.
+```json
+[
+  {
+    ""group"": ""OS Detail"",
+    ""detail"": ""........""
+  },
+  {
+    ""group"": ""Software Detail"",
+    ""detail"": ""........""
+  }
+]
+```
+The runner will use `::group` and `::endgroup` to fold all detail info into an expandable group.
+
+Both [virtual-environments](https://github.com/actions/virtual-environments) and self-hosted runners can use this mechanism to add extra logging info to the `Set up job` step's log."
+"## Context
+
+This ADR proposes adding `steps.<id>.outcome` and `steps.<id>.conclusion` to the steps context.
+
+This allows downstream a step to run based on whether a previous step succeeded or failed.
+
+Reminder, currently the steps contains `steps.<id>.outputs`.","## Decision 
+We will add `steps.<id>.outcome` and `steps.<id>.conclusion` to the steps context to enable conditional execution of downstream steps based on the success or failure status of prior steps. This enhances workflow flexibility and error handling without requiring external scripts or complex workarounds. Implementation will follow existing patterns for context object population and be documented in the workflow syntax reference.","## Decision
+
+For steps that have completed, populate `steps.<id>.outcome` and `steps.<id>.conclusion` with one of the following values:
+
+- `success`
+- `failure`
+- `cancelled`
+- `skipped`
+
+When a continue-on-error step fails, the outcome will be `failure` even though the final conclusion is `success`."
+"## Context
+
+Since configuring self-hosted runners is commonly automated via scripts, the labels need to be able to be created during configuration.  The runner currently registers the built-in labels (os, arch) during registration but does not accept labels via command line args to extend the set registered.
+
+See Issue: https://github.com/actions/runner/issues/262
+
+This is another version of [ADR275](https://github.com/actions/runner/pull/275)","## Decision
+We will implement support for passing custom labels during self-hosted runner registration via command-line arguments. These user-defined labels will be registered alongside the built-in labels (e.g., `os`, `arch`) when the runner first contacts GitHub Actions. This change will enable infrastructure automation scripts to fully configure runners without requiring post-registration label setup, improving consistency and reliability in dynamic environments.
+
+Implementation will follow the pattern established in ADR275 and be contributed upstream to the [actions/runner](https://github.com/actions/runner) repository. Custom labels must adhere to GitHub's labeling conventions and be subject to the same validation as UI-assigned labels. Documentation will be updated to reflect the new `--labels` flag usage.","## Decision
+
+This ADR proposes that we add a `--labels` option to the `config`, which could be used to add custom additional labels to the configured runner.
+
+For example, to add a single additional label the operator could run:
+```bash
+./config.sh --labels mylabel
+```
+> Note: the current runner command line parsing and envvar override algorithm only support a single argument (key).
+
+This would add the label `mylabel` to the runner, and enable users to select the runner in their workflow using this label:
+```yaml
+runs-on: [self-hosted, mylabel]
+```
+
+To add multiple labels the operator could run:
+```bash
+./config.sh --labels mylabel,anotherlabel
+```
+> Note: the current runner command line parsing and envvar override algorithm only supports a single argument (key).
+
+This would add the label `mylabel` and `anotherlabel` to the runner, and enable users to select the runner in their workflow using this label:
+```yaml
+runs-on: [self-hosted, mylabel, anotherlabel]
+```
+
+It would not be possible to remove labels from an existing runner using `config.sh`, instead labels would have to be removed using the GitHub UI.
+
+The labels argument will split on commas, trim and discard empty strings.  That effectively means don't use commas in unattended config label names.  Alternatively, we could choose to escape commas but it's a nice to have."
+"## Context
+
+In addition to action's regular execution, action author may wants their action to have a chance to participate in:
+- Job initialization
+  My Action will collect machine resource usage (CPU/RAM/Disk) during a workflow job execution, we need to start perf recorder at the beginning of the job.
+- Job cleanup
+  My Action will dirty local workspace or machine environment during execution, we need to cleanup these changes at the end of the job.  
+  Ex: `actions/checkout@v2` will write `github.token` into local `.git/config` during execution, it has post job cleanup defined to undo the changes.","## Decision
+We will extend the GitHub Actions runner protocol to support job-level hooks, enabling actions to participate in job initialization and cleanup phases. Authors will declare these capabilities in their action's `action.yml` using `pre-job` and `post-job` keywords, which specify entry points for setup and teardown logic. These hooks will execute on the same runner machine, within the same environment context as the main action, ensuring access to shared resources like the filesystem and tools. The runner will guarantee that `pre-job` hooks run once at the start of the job (after checkout but before any steps) and `post-job` hooks run once at the end, regardless of job success or failure, supporting reliable cleanup and telemetry collection. Documentation and linting rules will be updated to guide authors on safe, performant use of these hooks.",## Decision
+"## Context
+
+Customers want to be able to compose actions from actions (ex: https://github.com/actions/runner/issues/438)
+
+An important step towards meeting this goal is to build functionality for actions where users can simply execute any number of steps.","## Decision 
+We will introduce support for composite run steps in actions, allowing users to define a sequence of steps within a single action. This enables the composition of multiple commands or operations as part of one reusable action, improving modularity and reducing duplication. The implementation will be documented in the [actions/runner#438](https://github.com/actions/runner/issues/438) issue and aligned with GitHub's existing actions syntax and execution model.","## Decision
+
+**In this ADR, we only support running multiple run steps in an Action.** In doing so, we build in support for mapping and flowing the inputs, outputs, and env variables (ex: All nested steps should have access to their parents' input variables and nested steps can overwrite the input variables)."
+"## Context
+
+We recently shipped composite actions, which allows you to reuse individual steps inside an action. 
+However, one of the [most requested features](https://github.com/actions/runner/issues/834) has been a way to support the `if` keyword.","## Decision 
+We will extend composite actions to support the `if` keyword for individual steps, enabling conditional execution within reusable workflows. This change will align composite actions more closely with standard workflow syntax and fulfill a high-priority community request. Implementation will follow GitHub's security and compatibility guidelines, with thorough testing to ensure consistent behavior across environments.",
+"## Context
+
+This ADR details the design changes for supporting custom configurable hooks for on various runner events. This has been a long requested user feature [here](https://github.com/actions/runner/issues/1543), [here](https://github.com/actions/runner/issues/699) and [here](https://github.com/actions/runner/issues/1116) for users to have more information on runner observability, and for the ability to run cleanup and teardown jobs. 
+
+This feature is mainly intended for self hosted runner administrators.
+
+**What we hope to solve with this feature**
+1. A runner admininstrator is able to add custom scripts to cleanup their runner environment at the start or end of a job
+2. A runner admininstrator is able to add custom scripts to help setup their runner environment at the beginning of a job, for reasons like [caching](https://github.com/actions/runner/issues/1543#issuecomment-1050346279)
+3. A runner administrator is able to grab custom telemetry of jobs running on their self hosted runner
+
+**What we don't think this will solve**
+- Policy features that require certain steps run at the beginning or end of all jobs
+  - This would be better solved to in a central place in settings, rather then decentralized on each runner. 
+  - The Proposed `Notification Hooks for Runners` is limited to self hosted runners, we don't beileve Policy features should be
+- Reuse scenarios between jobs are covered by [composite actions](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) and [resuable workflows](https://docs.github.com/en/actions/using-workflows/reusing-workflows)
+- Security applications, security should be handled on the policy side on the server, not decentralized on each runner","## Decision
+We will implement a configurable hooks system for self-hosted runners that allows administrators to define custom scripts to execute at specific runner lifecycle events (e.g., pre-job, post-job, and runner startup/shutdown). These hooks will be configured via a local configuration file on the runner machine and will support use cases such as environment cleanup, job setup (e.g., cache preparation), and custom telemetry collection.
+
+The implementation will:
+- Support synchronous execution of hooks with timeouts and proper error handling.
+- Log hook output alongside runner logs for observability and debugging.
+- Clearly document security considerations, emphasizing that hooks are not a security boundary and should not be relied upon for policy enforcement.
+- Exclude built-in support for centralized policy enforcement, directing users to GitHub’s policy and settings features instead.
+- Integrate with existing solutions like composite actions and reusable workflows by focusing solely on runner-level concerns.
+
+This approach balances flexibility for self-hosted runner administrators with maintainability and security, addressing long-standing community requests while avoiding overlap with higher-level workflow composition and policy mechanisms. Implementation tracking: [GitHub Issue #1543](https://github.com/actions/runner/issues/1543)",
+,Please provide a context for the architecture decision you'd like me to help with.,
+"## Context
+
+Following the [adoption of actions-runner-controller by GitHub](https://github.com/actions/actions-runner-controller/discussions/2072) and the introduction of the new runner scale set autoscaling mode, we needed to provide a basic runner image that could be used off the shelf without much friction.
+
+The [current runner image](https://github.com/actions/runner/pkgs/container/actions-runner) is published to GHCR. Each release of this image is tagged with the runner version and the most recent release is also tagged with `latest`.
+
+While the use of `latest` is common practice, we recommend that users pin a specific version of the runner image for a predictable runtime and improved security posture. However, we still notice that a large number of end users are relying on the `latest` tag & raising issues when they encounter problems.
+
+Add to that, the community actions-runner-controller maintainers have issued a [deprecation notice](https://github.com/actions/actions-runner-controller/issues/2056) of the `latest` tag for the existing runner images (https://github.com/orgs/actions-runner-controller/packages).","## Decision 
+We will deprecate the `latest` tag for our runner images in favor of requiring users to pin specific versioned tags. This change aligns with security best practices and ensures a consistent, predictable runtime environment. We will update documentation and issue clear warnings in repositories and deployment guides to guide users toward version pinning. Additionally, we will provide tooling recommendations—such as Dependabot integration—to help users automate updates to new stable versions in a controlled manner.","## Decision
+
+Proceed with Option 2, keeping the `latest` tag and adding the `NOTES.txt` file to our helm charts with the notice."
+"## Context
+SS?? fundamentally relies on a third-party provider service to authenticate requests (e.g. OAuth2
+via Google). The provider may experience transient faults for any number of reasons - perhaps the
+provider is experiencing a transient outage, or our traffic has been temporarily rate limited. We
+wanted to build SS?? to anticipate and handle the presence of faults during communication with
+authentication providers, no matter the underlying cause.","## Decision  
+We will implement resilient retry logic with exponential backoff and jitter for all authentication requests to third-party providers. This approach will be standardized across all provider integrations using a centralized retry mechanism, ensuring transient faults (e.g., rate limiting, temporary outages) are handled gracefully without degrading user experience. Circuit breaker patterns will also be incorporated to prevent cascading failures during prolonged provider outages. These controls will be implemented at the service boundary layer and monitored via observability tools to detect and alert on recurring issues.","## Decision
+We implemented a generic `circuit.Breaker` type, which implements the ""Circuit Breaker"" design
+pattern made popular by Michael T. Nygard's book, [""Release It!""](
+https://pragprog.com/book/mnee/release-it). All requests to the provider service are issued through
+a stateful `circuit.Breaker` instance, which tracks the frequency of request failures. When the
+`Breaker` sees that enough requests are failing, it temporarily suspends all outgoing traffic to the
+provider (i.e. ""enters `Open` state). After some time, the `Breaker` transitions to a `HalfOpen`
+state, in which a limited number of outbound requests are allowed. If failures persist, then the
+`Breaker` will once again suspend outbound traffic, re-enter `Open` state, and typically will wait
+for a longer interval of time before trying again. If instead the `Breaker` observes that requests
+are consistently succeeding, then it will resume all outbound traffic (i.e. enter `Closed` state).
+
+The SS?? [`docs`](/docs/) directory contains a [Circuit Breaker](
+/docs/architecture/circuit-breaker.md) document with more details. The implementation can be found
+in [`breaker.go`](/internal/auth/circuit/breaker.go)"
+"## Context
+
+We make a lot of decisions during the life of a project and
+documenting those decisions would help new team members and outside
+contributors follow our thinking. It also opens up an opportunity for
+constructive criticism around those decisions which will result
+in better decision making.
+
+We want to develop a product in the open. Opening up our decision making process for outside contributors is an important part in providing the opportunity to take ownership and impact the project in non-trivial ways.
+
+Recording decisions will also be a useful form of documentation in general as it does not get out of date. All that's documented is that a decision has been made at a certain point in time.","## Decision
+We will use Architecture Decision Records (ADRs) to document significant architectural decisions. New decisions will be recorded in Markdown files following the [Michael Nygard style](https://github.com/joelparkerhenderson/architecture-decision-record), added to an `adr` directory in the project repository, and numbered sequentially. Each ADR will include context, decision, status, and relevant links or references. This practice will improve transparency, onboarding, and long-term maintainability of the project.","## Decision
+
+We will adopt a format similar to [Architecture Decision
+Records](http://thinkrelevance.com/blog/2011/11/15/documenting-architecture-decisions) (ADR)
+to propose and document notable decisions. In contrast to ADRs we will try to embrace this tool for more than just architectural concerns. Decisions regarding development practices and product direction are just as important.
+
+What decisions are notable and which are not is left to common-sense and informal consensus among the team.
+
+Decisions may be proposed and discussed informally, should however eventually end up ÃÂ¡ÃÂª with all relevant discussion summarized ÃÂ¡ÃÂª in the `doc/decisions/` directory of this repository.
+
+Decisions are numbered to have a clear identifier."
+"## Context
+
+Extensions are defined by an EDN file accessed from decentralized storage. An URI schema allows to identify those files.","## Decision  
+We will use the `extension://` URI scheme to identify and locate EDN-based extension definition files stored in decentralized storage. The resolution mechanism will be implemented in a dedicated service that parses the URI, retrieves the EDN file from the decentralized storage network (e.g., IPFS or similar), and validates its structure against a predefined schema before loading the extension. Configuration and supported decentralized storage backends will be managed through environment variables to ensure flexibility across environments.","## Decision
+
+URI follows ethereum URI schema as specified in [EIP 831](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-831.md)
+
+
+```
+uri                     = ""ethereum:"" path
+path                    = ""status:extension"" "":"" storage ""@"" id
+storage                 = STRING (e.g. IPFS)
+id                      = STRING (e.g. IPFS hash)
+```
+
+An example of an extension available on IPFS is: `ethereum:status:extension:ipfs@QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB`"
+"## Context
+
+We want to launch our beta in Q2. This requires us to keep a tight scope and stay on the critical path.
+
+Group chat is not as vital as 1-1 chat for the chat experience. It is also
+likely not as useful for an MVP as public chat is, since this gives people a
+chance to talk to strangers and it is open by default.
+
+Whether group chats are in scope or not has been a recurring discussing and a
+lot of effort has been wasted related to this.
+
+There are currently a lot of outstanding regressions related to group chat: https://github.com/status-im/status-mobile/labels/group-chat Additionally, since group chats are private the encryption and security of those are generally harder than 1-1 and public chat.","## Decision
+Group chat functionality is out of scope for the Q2 beta launch. We will focus on delivering a stable and secure 1-1 and public chat experience as part of the MVP. Group chat will be re-evaluated for inclusion in a post-beta release based on user feedback, resource availability, and resolution of outstanding technical debt and security considerations. This decision aims to reduce scope creep, minimize unresolved regressions, and ensure timely delivery of the core chat experience.","## Decision
+
+Disable group chat for beta and don't work on bugs related to it until after. See https://github.com/status-im/status-mobile/issues/3995
+
+This ensures we can release beta without blockers, and then we can take some
+time to fix group chats properly."
+"## Context
+
+Currently peers for messaging are hardcoded in the app. This means we can't
+easily scale, as some of these nodes might fill up when we have more than N
+active users.
+
+Discovery v5 protocol (https://ideas.status.im/ideas/092-disc-v5-research,
+https://github.com/fjl/p2p-drafts/blob/master/discv5-eip.md) allow us to
+discover new peers from the app and scale server peers in our cluster
+independently. This is vital for high availability/reliability and security.","## Decision  
+We will implement the Discovery v5 protocol for peer discovery in our messaging system. This will replace the current hardcoded peer configuration, enabling dynamic peer discovery and allowing our server cluster to scale independently based on network demand. The implementation will support high availability, improve reliability, and enhance security by reducing reliance on a static list of peers. Work will be tracked in the associated engineering backlog.","## Decision
+
+- Use and enable Discovery v5 for all networks
+- Do this before beta is released
+
+This means we have capacity to achieve 5000+ DAU / 500 concurrent connection. It
+seems unlikely we can do so with reliable messaging in the current setup.
+
+Trade-off for this is:
+- Uncertainty in introducing a new protocol leading to possible delays
+- Possible increase in CPU/Network (we can disable protocol once peers are found though)"
+"## Context
+
+Idea [142-Wallet-Compatibility](https://ideas.status.im/ideas/142-wallet-compatibility/README) changes the way we generate keys starting from the 12 mnemonic words.
+
+This change allows users to create a wallet in other apps and import the same address in Status using the 12 mnemonic words.","## Decision 
+We will implement the BIP-39 standard for mnemonic phrase generation and BIP-44 for hierarchical deterministic wallets to ensure cross-application wallet compatibility. This will enable users to generate a wallet using 12-word mnemonic phrases in other applications and seamlessly import the same address into Status. The implementation will be aligned with industry standards to support interoperability while maintaining security and usability.","## Decision
+
+* update the BIP39 seed generation to use the salt `""mnemonic""` instead of `""status-im""` following [BIP39](https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki#from-mnemonic-to-seed).
+
+* update the master key generation using the constant `""Bitcoin seed""` instead of `""status-im""`, following [BIP32](https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki#master-key-generation).
+
+* remove the use of the password in the salt during the BIP39 seed generation (password is not removed from the app in general, and it's still required to encrypt the keys on the device)."
+"## Context
+
+On the path to releasing a usable beta we've faced a variety of performance
+issues:
+
+- https://github.com/status-im/ideas/issues/55
+- https://ideas.status.im/ideas/071-low-traffic
+- https://ideas.status.im/ideas/076-smooth-ui
+- https://ideas.status.im/ideas/083-energy-efficient
+
+Some of these performance issues are related to the use of LES, especially on
+Mainnet. Examples of problems include: slow/hot sync, disk filling up, bandwidth
+usage, etc. This can partly be remedied by the use of CHT to speed up sync
+(https://github.com/status-im/status-go/wiki/Updating-CHT-BloomTrie).
+
+In order to simplify the problem, we decided earlier this year to not spend too
+much time looking into performance improvements related to LES, instead focusing
+our efforts on improving the performance on Whisper and in client-side code.
+
+This also means we don't have a full picture of to what extent LES is a
+performance bottleneck for the Status app. It is possible proper use of CHT,
+slowing sync down, vary load depending on if you are on WiFi or not, etc, can
+solve these problems. However, the consensus right now is that ULC is the more
+promising route to take.
+
+However, since ULC isn't ready yet, this means we are relying on Infura. This
+is a bad idea from a decentralization and security point of view. This can be
+partly remedied by allowing the user to run an upstream node. It is still a bad
+trust model, relying on third-party Ethereum nodes, and we want to get away
+from this as soon as possible.
+
+With ULC it is possible to connect to more than one node, which increases
+decentralization and security.","## Decision
+We will continue using Infura as our primary Ethereum node provider for the beta release, while prioritizing development of ULC (Ultra-Light Client) to enable secure, decentralized connectivity to multiple Ethereum nodes. In the interim, we will implement user-configurable upstream node support to mitigate trust risks associated with third-party node reliance. Performance optimization efforts will remain focused on Whisper and client-side performance, with periodic reassessment of LES-related bottlenecks to inform future roadmap decisions.","## Decision
+
+1. Rely on upstream nodes for beta. For the closed beta scheduled to be releases
+Q2 we will provide two ways of accessing the Ethereum network:
+
+- Upstream RPC with Infura (default)
+- Custom upstream node (https://github.com/status-im/status-mobile/issues/3994)
+
+From a decentralization point of view we need the latter before we can release
+the beta.
+
+2. ULC MVP. Additionally, as soon as beta is released, assess and start to
+   introduce ULC as an experimental non-default mode in the app.
+   
+By doing this we also support the network, since it is still a very new
+protocol. ULC requires trusted peers to operate, and right now trust is
+established by config (list of trusted peers).
+
+Initially we could hardcode these nodes, with option to add your own. Later on
+we can have some form of distributed directory with a rating system. This also
+likely requires merging ULC upstream, so we aren't the only ones running trusted
+nodes.
+
+3. LES track (optional). If we still have resources and there's interest,
+optionally run a parallel track to clean up LES usage (update CHT, cluster) and
+understand exact performance impact and viablity of running LES on
+resource-constrained devices.
+
+These three decisions balances the following trade-offs:
+
+- get a usable beta released as soon as possible
+- provide users with options to get minimal amount of decentralization
+- pave the way for trustless usage by default (ULC/LES node)"
+"## Context
+
+We have some data that we don't want to appear in the logs (user passwords are
+a good example). Currently, they are passed around as strings, that could be
+printed out by mistake in a log entry (see https://github.com/status-im/status-mobile/issues/4053)","## Decision 
+We will introduce a `Secret` type that wraps sensitive data (e.g., passwords, tokens) and prevents accidental logging by overriding string representation methods (e.g., `.toString()`, `__str__`, or equivalent) to return a redacted value such as `[REDACTED]`. Direct access to the underlying value will require an explicit unwrap method, making intentional use visible in code reviews. Additionally, we will implement static analysis rules to detect and block logging of `Secret`-typed values, and update our logging middleware to automatically redact any field named or typed as secret. This pattern will be documented in our security guidelines.","## Decision
+
+To minimize the risk of leaking passwords through logs, we should not pass
+passwords as strings in our codebase. We introduced a new type `MaskedData` in
+`status-im.utils.security`.
+update (16-Dec-2022) `status-im.utils.security` is now moved over to `utils.security.core` 
+
+We use `(security/mask-data <data to hide>` to wrap sensitive data into this
+type and then use `(security/unmask <masked-data>)` to get the plaintext back.
+
+It is important to keep that sensitive data masked as much as possible, until
+you need the plaintext to pass to the extenral APIs.
+
+Example:
+```clojure
+(println (security/mask-data ""my-plaintext-password"")) ;; Outputs ""******""
+(println (security/unmask (security/mask-data ""my-plaintext-password""))) ;; Outputs ""my-plaintext-password""
+```"
+"## Context
+
+This change describes a methodology of development which we believe will help
+us increase the confidence and speed in the development process.","## Decision 
+We will adopt a trunk-based development workflow with feature flags to enable continuous integration and deployment. This approach will allow us to merge changes frequently to the main branch while using feature flags to control the exposure of incomplete features. Automated testing and code reviews will be required for all pull requests, ensuring stability and quality. Feature flags will be used to safely test and gradually roll out new functionality to users, reducing risk and enabling faster iteration.",
+"## Context
+
+Classical release approach: we cut off the release branch, stabilize it, fix every critical issue and release. Some changes are cherry-picked to the release branch.
+
+It has a couple of downsides:
+
+- Resources are scattered across two branches;
+
+- Unique fixes and unique combination of commits in the release branch;
+
+- Unpredictable release schedule (any day can be a release day!).","## Decision 
+We will adopt a time-based release model with fixed two-week cycles. All changes must be merged into the main branch by the scheduled cutoff date, after which the release branch is created and no new features are accepted—only critical bug fixes with approved exceptions. This ensures consistent focus on a single branch, reduces context switching, and enables predictable release planning. Release dates will be published in advance and adhered to unless a severe security or stability issue requires postponement.",
+"## Context
+
+Originally, we supported 3rd party status extensions in form of javascript jailed execution environment (eq Jail) + small js library exposing chat commands API to js code.
+
+While neat in theory, it has some serious downsides:
+
+- Design of the API was quite poor, preferring mutable semantics over stateless API leveraging strength of the host application (cljs/re-frame).
+  As a result of that, more dynamic/state requiring things (like the live tx detail in `/send` command messages) were very hard to do,
+  so instead of ""eating our own dogfood"", we decided to side-step the API and implement such things as hard-coded logic in the app, while partly
+  retaining the js code for ""easier"" things (like parameter declaration).
+  Needles to say, such efforts produced code of very poor quality, riddling our app with hard-coded ""magic"" everywhere in the codebase, completely
+  defeating the point of ""dogfooding"" while still requiring more effort and being much more error prone (no way to unit test jail logic) because 
+  of the need to asynchronously communicate with jail for leftover logic in command messages (the parts not hardcoded in app).
+  
+- We were in a state where there was not even one command defined completely in jail, with all of them requiring custom hardcoded logic in app to
+  actually work.
+  Due to numerous changes and rush to get things working, half of the API was obsolete and was not working/working differently then described in
+  the API documentation.
+  
+- We are quite tight stretched regarding performance and the Jail didn't particularly help with that - whenever some command message was defined in
+  Jail, it required constant RN Bridge ""ping-pong"" whenever sending the message or receiving the message, eating more resources + breaking otherwise
+  quite simple logic into harder to reason asynchronous call chains (execute method defined in Jail, wait for the result, execute next method in Jail...).
+  
+- Till now, there was no real interest in 3rd party bots anyway - the only ""real"" DAPPs submitted to status were ""normal"" DAPPs utilising just the `web3.js`
+  API and built on top of regular web technologies, so they could be ran in any Ethereum client like Metamask or Mist, besides Status.
+  
+- There is a very promising new concept of extensions (project pluto), which will enable to extend status with much nicer and declarative extension
+  definitions.
+  Such extensions will not be able to only hook-in into the command messages logic, but also other application (host) hooks, like wallet assets/collectibles,
+  chat contacts, etc.","## Decision 
+We will deprecate and remove support for 3rd party status extensions running in the jailed JavaScript environment. Given the poor design, lack of usage, performance overhead, and maintenance burden — along with the emergence of a more robust and declarative extension system (Project Pluto) — continuing to support the current extension model is no longer justified. All existing functionality previously reliant on jailed code will be refactored into native application logic using cljs/re-frame, enabling better testability, performance, and maintainability. Future extensibility will be handled exclusively through Project Pluto’s extension framework.","## Decision
+
+In the light of points above, we decided to remove Jail and `Status.js` API from the application and re-work command messages in set of nicely
+encapsulated app level protocols, so command related logic will be defined in one place, commands will be able to leverage strength of our platform
+and development of any new functionality related to them will be much faster and more pleasant. 
+We will address the 3rd party code issue separately by extensions."
+"## Context
+
+During the development of a new Sylius API (based on API Platform) for Product Options, we had to decide how we should handle
+Product Option's values collection, to make it efficient and easy to use.","## Decision 
+We will use API Platform's built-in support for nested collections and custom subresources to manage Product Options' values collection. This approach allows us to expose related entities through dedicated endpoints while maintaining clean, discoverable APIs. We will implement custom data providers where necessary to optimize queries and avoid N+1 problems, ensuring efficient retrieval of option values. Additionally, we will leverage serialization groups to control payload size and structure based on client needs.","## Decision and reasoning
+
+Product option values should always be provided with their IRIs. They can exist outside of the `ProductOption` resource 
+(e.g. be [related with](https://github.com/Sylius/Sylius/blob/master/src/Sylius/Component/Product/Model/ProductVariant.php#L44) `ProductVariant`).
+Moreover, values embedded together with their translations in the `ProductOption` that already has its translations would
+result in a massive and unmanageable response."
+"## Context and Problem Statement
+
+We want our API to cover all the functionalities that are currently implemented in the UI.","## Decision 
+We will implement a comprehensive API-first approach by creating a RESTful API that mirrors all existing UI functionalities. The API will be versioned (starting with v1) and documented using OpenAPI 3.0 specifications. We will use automated tests to ensure parity between API endpoints and their corresponding UI flows, and prioritize endpoints based on user impact and reuse potential. New features will be implemented in the API first before being exposed in the UI.","## Decision Drivers
+
+* All the functionalities implemented for API should be tested
+* Tracking whether a feature has been covered in the API or not should be easy"
+"## Context and Problem Statement
+While developing the new, unified API, there weren't clear guidelines for structuring new API endpoints. The first approach
+was introducing two different endpoint prefixes, similar to what is currently done in a regular shop. On the 30th of April,
+we have merged a unification of our endpoints in https://github.com/Sylius/Sylius/pull/11397. This move was dictated by 
+the fact that we wanted to push unification even further. Depending on the currently logged in user, we had to expose different
+data for available entities in both contexts. Besides, it ought to simplify API usage (as it would reduce the number of endpoints)
+and simplify the relations between resources. However, this change rose a lot of new issues to solve:
+
+ * Different serialization for different users is not trivial. Some relations between objects are also contextual, so 
+admin can see many more links than the regular visitor or shop user. 
+ * Endpoints like ""Product Show"" are resolved differently depending on the context as well. The shop products are determined 
+based on the slug (taking into account the current channel), while the administrator is browsing products by code. This
+separation blurs the product identifier, and it is not clear which route should be considered as IRI. 
+ * the split was not complete. Two separate log in endpoints have to be preserved, due to our user architecture and the
+decision that we want to be explicit, which user is trying to log in.
+ 
+Using one unified identifier in both admin and shop panel is a no go as well. In the shop we should use a `slug`, to be able
+to expose product data based on URL (or provide redirect to proper resource based on the channel and locale), while in admin 
+resources are channel and locale agnostic, and we should use `codes` instead.","## Decision
+We will revert the unified API endpoints and return to maintaining separate endpoint prefixes for the shop and admin contexts (`/shop-api` and `/admin-api`). This separation allows us to:
+
+- Define clear, context-specific serialization rules and resource relationships.
+- Use appropriate identifiers (slugs in shop context, codes in admin context) without ambiguity.
+- Maintain distinct authentication flows that align with user roles and system architecture.
+- Improve developer experience by reducing conditional logic and complexity in routing, serialization, and access control.
+
+The split ensures cleaner abstractions, better performance, and more maintainable code. Full unification will be reconsidered only if a future architectural change eliminates the contextual divergence between shop and admin needs.","## Decision Drivers
+
+* Driver 1: There is not strict requirement to have a direct 1 to 1 correlation between entities in database and exposed API Resources.
+One resource in the database may aggregate several API Resources
+* Driver 2: There should be a clear way to determine an IRI for each of exposed API Resources
+* Driver 3: A clear separation of available resources and paths for visitor and admin may be expected"
+"## Context and Problem Statement
+
+While defining new handlers, we may define a bus to which particular handler should be assigned to. If not, handler will
+be added to all existing buses. Right now, we have only one bus in Sylius, so decision will not change current behaviour.
+However, we may add additional buses in the future and more than one bus is not uncommon thing.","## Decision 
+We will explicitly define the bus to which each handler is assigned, rather than relying on a default assignment to all buses. This ensures clarity, prevents unintended message handling in multi-bus architectures, and future-proofs our system as additional buses are introduced. Defaulting to all buses will be deprecated and removed once all handlers are explicitly configured.","## Decision Drivers <!-- optional -->
+
+* Driver 1 - easiness of changing default behaviour and usage of the bus
+* Driver 2 - backward compatible possibility of changing behaviour"
+"## Context and Problem Statement
+
+To achieve 100% API coverage, we need to handle emails by API.","## Decision 
+We will implement email functionality via API by integrating a dedicated email service provider (ESP) that supports programmatic email sending and receiving through a robust API. This includes defining clear API contracts for email triggers, managing templates within the ESP, and ensuring deliverability and monitoring are handled through the provider’s tooling. The implementation will deprecate direct SMTP calls in favor of API-first email handling across all services.","## Decision Outcome
+
+Chosen option: ""Using events"", because it allows us to send email using events, commands and handlers. Thanks to this we can queue few messages in async transport."
+"## Context and Problem Statement
+
+Initial implementation of Unified API used `/new-api` prefix, to aggregate all following endpoints. This prefix does not 
+clearly state the version of it and is not future-proof. At some moment of time our ""new api"" can become ""old api"". We should 
+have clear guidance how to version our APIs.","## Decision 
+We will adopt semantic versioning for our Unified API by introducing a versioned prefix in the URL path, starting with `/v1/`. All future endpoints will be nested under this versioned prefix (e.g., `/v1/page-data`, `/v1/navigation`). When backward-incompatible changes are required, we will introduce a new major version (e.g., `/v2/`) and maintain support for previous versions according to a documented deprecation policy. The legacy `/new-api` prefix will be deprecated and scheduled for removal after a minimum six-month transition period. Versioning documentation will be added to the API guide to ensure consistent implementation across services.","## Decision Outcome
+
+As the underlaying technology, structure and content have changed significantly and taking into account easiness of first solution
+the decision is to go with the `/api/v2` endpoint path. In the future it does not block us from the usage of the `Accept`
+header in addition to this path, however it may be misleading for consumers."
+"## Context and Problem Statement
+
+API Platform recommends using IRI as an identifier. That identifier gives more clarity than an id because it contains more information - a full endpoint path to the resource and its unique identifier. On resources, API Platform handles IRI out of the box.
+While we were designing Sylius new API, we have decided to use commands in many endpoints.
+In some cases, this solution is more flexible than the default creation approach (as we have control over what we are processing), but it doesn't handle the transformation of IRI to proper `code`/`id`.
+In the past, we have been using `code`/`id` instead of IRI, then we have been using both approaches.
+Now we are trying to unify the new API and replace codes and ids with IRI everywhere.
+The main challenge is the usage of IRI in requests, where we want to have IRI in the request but `id`/`code`in its commands and command handlers.","## Decision 
+We will implement a Symfony event listener that automatically transforms IRIs to their corresponding `id`/`code` values during the deserialization of request data when handling commands. This transformation will leverage API Platform's built-in `IriConverter` service to resolve IRIs to resource instances and extract the appropriate identifier (`id` or `code`) based on the resource type. The converted identifiers will then be injected into the command DTOs before they are passed to command handlers. This approach ensures consistency in using IRI as the public API identifier while maintaining flexibility in internal command processing, aligning with API Platform best practices and reducing technical debt from mixed identifier patterns.","## Decision Outcome
+
+Chosen option: ""Handling and transforming IRI to `id`/`code`"". Request that is based on command and needed information like `code`/`id` should get it as IRI"
+"## Context and Problem Statement
+
+Sylius is by design application that will be adjusted to customer needs. 
+Therefore each part of it has to be crafted with replaceability or customizability at its core. 
+Nonetheless, the current state of API Platform integration requires the replacement of the whole config of the whole resource. 
+In terms of the more complicated cases like Order or Customer, this practice may become error-prone and hard to maintain for both maintainers and Sylius users.","## Decision 
+We will refactor the API Platform integration to support granular configuration overrides, allowing users to modify specific aspects of a resource's API configuration without replacing the entire configuration. This will be achieved by introducing configuration inheritance and extension points within the resource definition system, enabling safer and more maintainable customizations for complex entities such as Order and Customer.","## Decision Outcome
+
+Chosen option: ""Config merging"", because it allows us easily overwrite any endpoint, without getting deep into api platform resources."
+"## Context and Problem Statement
+
+A big chunk of resources available in Sylius have some part locale aware. Product descriptions, names of payment or shipping methods
+should be translated to the customer to provide the best user experience. Right now most of the resources are returned with 
+all available translations in the store and proper localization of content is left to the frontend developers. What is more,
+this solution is not consistent, as some endpoints already embeds some part of translatables in them. We should provide clear,
+easy to use and consistent way of handling customer locales.","## Decision 
+We will implement a locale-aware API layer that respects the `Accept-Language` header from the client request to return only the relevant translation for a given resource. Translatable entities will be updated to support fetching data based on the requested locale, falling back to a default locale (e.g., `en_US`) if the requested locale is not available. Endpoints will be standardized to ensure consistent handling of translatable fields across all resources. Documentation will be updated to reflect the new behavior, and frontend clients will be required to send the appropriate `Accept-Language` header to receive localized content. This change will reduce payload size, improve consistency, and simplify localization logic on the frontend.","## Decision Outcome
+
+The first approach should be used in admin section of API, while the third one should be used in shop section. This way, we
+will receive best of both worlds with the minimal effort. It is worth mentioning that Sylius have two distinguish entry points
+to API - admin and shop. They are concerned about different things and resolves different problems. Unified view of a product
+in the shop will make it easy and straightforward to build product pages. At the same time all translation approach should be used in
+admin to provide full control over ""translation"" resource - as we should treat them. Therefore, every resource translation
+should be linked to the main resource through IRI. Each of these translation resource may be a subject of all CRUD operations
+accessible throughout HTTP Verbs."
+"## Context and Problem Statement
+Customer should have access only to locales available in their channel","## Decision 
+We will implement locale access control by integrating channel-specific locale filtering at the authentication and authorization layer. This will ensure that customers can only access locales available in their subscribed channel. The mapping between channels and allowed locales will be configured in a centralized service, which will be queried during the user session initialization. This approach guarantees consistency, simplifies updates to locale-channel mappings, and prevents unauthorized locale access without requiring changes to the frontend or content delivery logic.","## Decision Outcome
+
+Chosen option: Using Data Provider
+Shops shouldn't have many locales for each channel, so lack of a pagination is smaller problem than creating overcomplicated 
+query in Doctrine Collection extension"
+"## Context and Problem Statement
+
+Cart and its processing is one of the key aspects of Sylius. It turned out that it has a vulnerability and there is
+possible for an anonymous user to override the cart of logged in customer by using only its email. This is because 
+when entering an email, during addressing step, the customer with this email is assigned to the cart and from then, 
+there is no simple way to distinguish between the carts created by the guest and the logged in user. The question is 
+how should we distinguish the carts to solve the vulnerability.","## Decision 
+We will associate carts with sessions instead of customers to prevent anonymous users from overriding logged-in customers' carts. A cart will be linked to a user only when the user logs in or registers, ensuring that session ownership remains isolated until explicit authentication occurs. This change will be implemented by modifying the cart assignment logic in the addressing step to prioritize session-based cart resolution and delay customer association until authentication. Additionally, we will introduce a unique session identifier as the primary key for cart ownership during the guest phase, preventing email-based conflicts.","## Decision Drivers
+
+Provided solution should:
+* solve the initial problem with overriding cart of logged in customer by anonymous user
+* not break a backward compatibility, both code and business behaviour"
+"## Context and Problem Statement
+Customer should have access only to locales available in their channel","## Decision 
+We will implement locale access control by integrating a channel-specific locale validation layer at the application's routing level. This layer will verify the requested locale against a predefined list of supported locales for the user's channel, sourced from a centralized configuration service. Requests for unsupported locales will be redirected to the default locale of that channel. The configuration will be cached locally within the application to minimize latency and external dependencies. This approach ensures scalability, maintainability, and consistent user experience across channels while preventing unauthorized locale access.","## Decision Outcome
+
+Chosen option: **""Using Doctrine Collection extension""**
+
+This option is consistent with current approach and does not omit Doctrine extensions like pagination."
+"## Context and Problem Statement
+
+While working with commands and handlers, we are always working with objects; therefore, these objects need to be 
+present in handlers. We may either fetch them from the repository based on identifiers or pass them as a part of 
+commands. The selected solution needs to take into account that our commands may be dispatched to external systems or 
+processed asynchronously","## Decision 
+We will pass fully hydrated domain objects as part of the command payload when dispatching commands to handlers, including external or asynchronous systems. To support serialization and transport, these objects must implement appropriate serialization interfaces (e.g., JSON Serializable) and be versioned to ensure backward compatibility. Object hydration logic will remain in the command producers, ensuring handlers receive consistent, ready-to-use state and reducing the risk of divergence or database contention during retries. This approach increases message size slightly but improves reliability, traceability, and performance by eliminating redundant data lookups.","## Decision Drivers
+
+* always operate on the actual state of the object
+* ease to integrate with external systems
+* be more consistent with CQRS pattern"
+"## Context and Problem Statement
+
+When working with entities and persisting the current state to DB one has to call a flush method on entity manager. 
+By default, it starts and commits transactions to used DB. The other possibility is to start the transaction manually, 
+which will suspend the auto-commit feature of Doctrine.","## Decision 
+We will explicitly manage transactions using Doctrine's transaction API to ensure data consistency and avoid unintended auto-commits. When persisting entity state, developers must wrap operations in `beginTransaction()`, `commit()`, and `rollback()` calls as appropriate. This approach provides full control over transaction boundaries, prevents partial updates in complex operations, and aligns with best practices for handling database transactions in Doctrine. Transaction management will be encapsulated within service layers to maintain separation of concerns and reduce boilerplate code.","## Decision Drivers
+
+* avoid inconsistent data in DB
+* flexibility to rollback changes
+* provide an easy way to interface with object state before committing transaction"
+"## Context and Problem Statement
+
+In our current system, every base form type is placed at the lowest possible level, either within a specific bundle or the core. 
+Form extensions serve as the primary means of extending form types since all form types are final. 
+However, this approach leads to a significant issue: form extensions work globally, which prevents us from reusing any form type easily in different contexts. 
+For example, if a field is added through an extension in the AdminBundle (admin context), the same field will also appear in the shop's context.
+This problem is compounded by the introduction of Symfony UX, which necessitates overriding some fields to enable its functionality. 
+As a result, distinguishing which context added a specific change and when each change should be applied becomes exceedingly difficult.","## Decision 
+We will deprecate form extensions and instead use non-final form types with explicit inheritance to extend forms in a context-specific manner. This approach allows us to control where and how form modifications are applied, avoiding the global side effects caused by form extensions. Context-specific form customizations will be implemented by extending base forms directly within the relevant bundle (e.g., AdminBundle or ShopBundle), ensuring changes do not leak across contexts. This change supports better maintainability, clearer intent, and compatibility with Symfony UX requirements.","## Decision Drivers
+
+* Need for context-specific form type customization.
+* Avoiding global side effects caused by form extensions.
+* Clear separation between admin and shop form types.
+* Simplification of managing and overriding form fields with Symfony UX."
+"## Context and Problem Stratement
+
+Until version 2.0, we supported API Platform version 2, which utilized
+`DataProviders` to deliver data to the API. These `DataProviders` were all
+located within the `Sylius\Bundle\ApiBundle\DataProvider` directory.
+This structure lacked differentiation between the admin and shop sections
+and did not provide clear organization for individual resources. 
+As a result, it became challenging to manage and maintain the codebase
+as the number of providers grew.
+
+With Sylius 2.0, the API Platform has been upgraded to version 3.
+One of the significant changes in API Platform 3 is the shift from 
+`DataProviders` to `StateProviders`. This change necessitates a 
+reconsideration of how we organize and structure our data-providing
+classes to ensure clarity, maintainability, and scalability.","## Decision 
+We will adopt a new directory structure for `StateProviders` in alignment with API Platform 3's architecture and best practices. StateProviders will be organized by resource and context (admin vs. shop), using the following namespace and directory pattern:
+
+```
+Sylius\Bundle\ApiBundle\StateProvider\<Admin|Shop>\<ResourceName>\<OperationType>StateProvider
+```
+
+For example:
+- `Sylius\Bundle\ApiBundle\StateProvider\Shop\Product\GetStateProvider`
+- `Sylius\Bundle\ApiBundle\StateProvider\Admin\Order\PaginationStateProvider`
+
+This structure improves clarity by:
+- Separating concerns between admin and shop APIs.
+- Grouping providers by resource, making it easier to locate and manage logic for a given entity.
+- Aligning with API Platform 3’s state machine-based processing model (processors and providers per operation).
+
+Additionally, we will register all `StateProvider` classes as services and tag them appropriately for auto-discovery by API Platform, reducing configuration overhead and promoting consistency.
+
+This decision ensures long-term maintainability, supports scalable growth of API functionality, and leverages modern API Platform patterns effectively.","## Decision Drivers
+
+* Moving from DataProviders to StateProviders
+* Clear separation between admin and shop providers
+* Clear separation between resources"
+"## Context and Problem Statement
+
+Until version 2.0, Sylius used API Platform version 2.x, 
+which utilized `DataPersisters` to handle data persistence 
+operations like saving, updating, and deleting resources. 
+These `DataPersisters` were all located within a single 
+directory, lacking clear organization.
+
+With the upgrade to Sylius 2.0, the API Platform has been 
+updated to version 3. One significant change in API Platform 3
+is the shift from `DataPersisters` to `StateProcessors`. 
+This necessitates a reconsideration of how we organize 
+and structure our data-processing classes to ensure clarity, 
+maintainability, and scalability.","## Decision 
+We will organize `StateProcessors` by domain and operation type, placing them in a dedicated directory structure under `src/StateProcessor/{Domain}/{Operation}`. For example, `OrderStateProcessor` for handling order creation would reside in `src/StateProcessor/Order/Create.php`. This structure improves clarity and scalability by grouping related processors, aligning with domain-driven design principles and facilitating easier maintenance and onboarding.","## Decision Drivers
+
+* Migrate from DataPersisters to StateProcessors
+* Clear separation between admin and shop processors
+* Clear separation between resources
+* Separation of Persist and Remove processors
+* Ease of customization in end applications"
+"## Context and Problem Statement
+
+The current directory structure of Query Extensions in the codebase is disorganized and unclear.
+
+```
+/Doctrine
+    /QueryCollectionExtension
+        ExampleExtension.php
+    /QueryExtension
+    /QueryItemExtension
+```
+
+There is no differentiation between sections such as Admin, Shop, and resources, resulting in unrelated extensions being grouped together based solely on their type.","## Decision 
+We will restructure the Query Extensions directory to group extensions by domain (e.g. Admin, Shop, Resources) rather than by type. The new structure will be:
+
+```
+/QueryExtensions
+    /Admin
+        /Collection
+            ExampleCollectionExtension.php
+        /Item
+            ExampleItemExtension.php
+    /Shop
+        /Collection
+        /Item
+    /Resources
+        /Collection
+        /Item
+```
+
+This improves code discoverability, enforces domain separation, and aligns with our domain-driven design principles.","## Decision Drivers
+
+* Improve code organization and clarity
+* Clear separation of extensions by section
+* Clear separation of extensions by resource"
+"## Context and Problem Statement
+
+Due to historical reasons, and being BC compliant, we had duplications with our message buses. 
+We had `sylius.command_bus` and `sylius_default.bus` for commands, `sylius.event_bus` and `sylius_default.bus` for events.","## Decision 
+We will consolidate the duplicated message buses by deprecating `sylius.command_bus` and `sylius.event_bus`, and standardizing on `sylius_default.bus` for both commands and events. This simplifies the messaging architecture, reduces maintenance overhead, and aligns with modern Symfony Messenger best practices. A migration path will be provided for existing handlers and messages.","## Decision Drivers
+
+* Unification of the message buses
+* Simplification of configuration and usage
+* Lesser cognitive load for developers"
+"## Context and Problem Statement
+
+Services in Sylius are named in different ways, depending on the time of their creation, and other services' names.
+Also, some services named with using the `dot` notation are harder to be used with `autowire` feature.","## Decision 
+We will standardize service naming across Sylius by adopting a consistent naming convention using `snake_case` without dots for all new and existing services. This ensures compatibility with the `autowire` feature and improves discoverability, maintainability, and onboarding for developers. Exceptions may be documented where third-party or Symfony conventions require otherwise.","## Decision Drivers
+
+* Make naming services predictable
+* Provide a consistent way of naming services
+* Support the `autowire` feature"
+"## Context and Problem Statement
+
+In previous versions, Sylius had API filters grouped by field type rather than by resource and section. This led to filters being applied inconsistently, making it hard to customize them per resource. The filters were also located in the `Filter/Doctrine/` directory, which didn't align with how we organize other Doctrine-related features, creating confusion.
+To improve maintainability, clarity, and ease of customization, a refactor is required to group filters per resource and section (admin and shop) and move the custom ones into the `Doctrine/ORM/Filter/` directory, as other Doctrine-related features are organized.","## Decision 
+We will refactor the API filters to be grouped by resource and section (admin and shop), aligning with our current organizational structure for Doctrine-related features. Custom filters will be moved from `Filter/Doctrine/` to `Doctrine/ORM/Filter/` to ensure consistency with the project's architecture. This change will improve maintainability, clarify filter ownership, and simplify customization per resource.","## Decision Drivers
+
+- Need for a clearer structure to reflect resource-based filtering.
+- Separation between admin and shop filters.
+- Alignment with Doctrine's structure for better maintainability and understanding."
+"## Context and Problem Statement
+
+The use of flags alongside language selection in the application UI has caused usability and consistency issues. Flags do not always accurately represent languages, especially in cases where:
+
+1. A language is used in multiple countries, leading to ambiguity.
+2. The regional variation of a language (e.g., ""English (Germany)"") is represented by the regionÃÂ¡ÃÂ¯s flag, which may mislead users.
+
+This raises the question: How can we ensure a clear and consistent language selection experience while avoiding potential confusion or technical complexity?","## Decision 
+We will remove national flags from the language selector UI and replace them with language names only, optionally including region names in parentheses where necessary (e.g., ""English (Germany)""). This change ensures clarity, avoids misrepresentation of languages by flags, and aligns with internationalization best practices. Regional distinctions will be handled through standardized locale codes (e.g., `en-DE`, `fr-CA`) in the backend, while the frontend displays only culturally appropriate, flag-agnostic labels. Any visual differentiation for languages will be implemented using text formatting or ISO language code tooltips, not imagery tied to national symbols.","## Decision Drivers
+
+* **User Experience**: Avoid user confusion and ensure clarity in language selection.
+* **Aesthetic Appeal**: Maintain a visually pleasing interface where possible.
+* **Technical Simplicity**: Minimize implementation and maintenance overhead.
+* **Consistency**: Provide a uniform and predictable experience across all languages."
+"## Context and Problem Statement
+
+In v4 we started using Apollo due to its appealing promises that it has better docs, is easier to begin, and does not enforce strict patterns like Relay does. Apollo was first used in a naive way where each component that requires data would execute it's own query resulting in a large number of queries and round trips which performed badly.
+
+We then transitioned to use Fat Queries that utilize fragments to compose a big query whose data response would then be distributed manually to the components that needed the data (Colocation).
+
+Huge effort and complexity needed to be introduced to support this, as Apollo provided limited to no support for this use case. The lack of documentation of our home grown graphql framework is hindering quality contributions from the community.
+
+It also revealed large performance issues inside Apollo that required an elaborate fork to fix.
+
+Apollo is moving in a different direction, preventing us from upgrading apollo itself.
+
+It is very easy to deteriorate performance, introduce bugs and break maintainability due to lack of proper Colocation support and prevention of misuse from the framework.
+
+We reached out to the Apollo team but haven't received the required attention to fix the issues upstream.
+
+For v5 we needed a better solution.","## Decision 
+We will migrate from Apollo to Relay for GraphQL management in v5. Relay’s strong support for colocation, static queries, and built-in performance optimizations aligns with our needs for maintainability, performance, and scalability. Its compile-time query validation and fragment support will enable safer, more modular code and reduce runtime overhead. Despite Relay’s steeper learning curve, its opinionated structure and Facebook’s long-term investment provide a more sustainable path forward. We will invest in documentation and training to lower the barrier to entry for contributors.","## Decision Drivers
+
+A framework that:
+
+- has first class support for Colocation
+- is performant
+- encourages best practices
+- prevent bugs
+- proven to work in a large and complex application
+- easy to maintain
+- good documentation"
+"## Context
+
+Decisions that affect the development of Terraform Controller that are not
+captured via a proposal need to be captured in some way. We need a method that
+is lightweight and easy to discover the decision that have been made. The record
+of decisions will help future contributors to the project to understand why
+something has been implemented or is done a certain way.","## Decision  
+We will use Architecture Decision Records (ADRs) to document decisions related to the development of Terraform Controller. ADRs will be stored in a dedicated `docs/adr` directory within the project repository, written in Markdown format, and follow the [Michael Nygard template](https://github.com/joelparkerhenderson/architecture-decision-record) for consistency. Each ADR will include a status field (e.g., proposed, accepted, deprecated) to indicate its current relevance. New decisions will be recorded via pull request to ensure review and traceability. This approach is lightweight, version-controlled, and easily discoverable alongside the codebase.","## Decision
+
+The project will use [Architectural Decision Records
+(ADR)](https://adr.github.io/) to record decisions that are made outside of a
+proposal.
+
+A [template](./0000-template.md) has been created based on prior work:
+
+* https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions
+* https://adr.github.io/madr/"
+"## Context
+
+To detect pull request changes, we can use webhooks or polling using GitHub's
+API.","## Decision
+We will use GitHub webhooks to detect pull request changes. Webhooks provide real-time notifications, reduce latency in detecting changes, and decrease the load on both GitHub's API and our internal systems compared to polling. This approach improves responsiveness and scalability of our CI/CD pipeline while remaining within GitHub's rate limits.","## Decision
+
+We decided to start with polling for security reasons. Using webhooks would require users to
+open an ingress to the cluster. Because of this requirement, we think security conscious folks may refuse to roll this out on production clusters especially in an
+air-gapped environment. This does not mean that we will never consider using webhooks for this, but that initially, polling is what we have chosen to implement.
+
+The Branch-Based Planner has two components:
+
+1. Polling Server: Detect Pull Request changes and manage Teraform resource
+   state.
+2. Informer: Make a comment when new plan output is available."
+"## Context
+
+Like [Flux](https://fluxcd.io/), the tf-controller API has a handful
+of places where it accepts cross-namespace references.
+
+ - `Terraform.spec.sourceRef` -- refers to the Flux source object with
+   the Terraform program
+ - `Terraform.spec.dependsOn[]` -- refers to other objects that must
+   be ready before this object can be run
+ - `.data.resources[]` -- in the config struct used by the branch
+   planner
+
+In general in Kubernetes, references to objects in other namespaces
+are frowned upon, because
+
+ - they break namespace isolation assurances; and,
+ - they encourage the proliferation of permissions.
+
+Both of these effects make a system less secure.
+
+However: removing cross-namespace refs entirely would break some
+installations in a way that would be difficult to fix, because Flux
+deployments often rely on defining sources away from objects that use
+them.","## Decision 
+We will retain support for cross-namespace references in the tf-controller API, but with stricter validation and documentation to mitigate security risks. We will:
+
+1. Require explicit opt-in via a feature flag (`allowCrossNamespaceRefs`) to enable cross-namespace references.
+2. Enforce that any cross-namespace reference must be accompanied by a RoleBinding or ClusterRoleBinding explicitly granting minimal required permissions.
+3. Add clear warnings in documentation about the security implications of breaking namespace isolation.
+4. Implement admission control checks to log and audit all cross-namespace references at creation time.
+
+This balances backward compatibility with existing Flux workflows against improved security posture. (Related: [fluxcd/tf-controller#issue-192](https://github.com/fluxcd/tf-controller/issues/192))","## Decision
+
+Deny cross-namespace references by default, but allow them to be
+enabled with a flag.
+
+So that the default value means the right thing, the flag name must be
+`enable-cross-namespace-refs`, and the default `false`. To avoid
+confusion when people try to use the Flux version of this flag
+`--disable-cross-namespace-refs`, it should be supported too, but only
+respected if supplied."
+"## Context
+
+The components provided by this package SHOULD primarily be designed
+with the following aims:","## Decision 
+The components provided by this package MUST be designed with reusability, accessibility, and consistency as primary goals. They SHOULD follow established design system principles, adhere to WCAG 2.1 guidelines for accessibility, and be documented with clear usage examples and props interfaces to ensure maintainability and ease of adoption across projects.","## Decision
+
+Define all suitable components in a way which enables this uniform
+workflow:"
+"## Context
+
+An alternative configuration procedure to ADR-0002, possibly better
+suited for dynamic theming, theme changes and separating the component
+configuration between behavioral and stylistic aspects. This new
+approach utilizes the hdom context object to retrieve theme attributes,
+whereas the previous solution ignored the context object entirely.
+
+A live demo of the code discussed here is available at:
+
+[demo.thi.ng/umbrella/hdom-theme-adr-0003](https://demo.thi.ng/umbrella/hdom-theme-adr-0003)","## Decision
+We will adopt the new configuration approach utilizing the hdom context object for dynamic theming and theme changes. This method improves separation between behavioral and stylistic aspects of component configuration by leveraging the context object to retrieve theme attributes, enabling greater flexibility and maintainability compared to the static configuration defined in ADR-0002. The implementation will follow the patterns demonstrated in the live demo at [demo.thi.ng/umbrella/hdom-theme-adr-0003](https://demo.thi.ng/umbrella/hdom-theme-adr-0003).",## Decision
+"## Context and Problem Statement
+
+On the Application Services team, we have successfully built several re-useable components for sync- and storage-related browser
+functionality by following what we've dubbed the ""rust-components"" approach: write the bulk of the code in rust
+so we can cross-compile it for different target platforms, have it expose a C-compatible FFI layer, then write a small amount
+of FFI bindings code to expose the functionality to each of several different target languages (e.g. Swift and Kotlin).
+
+The FFI layer and foreign-language bindings code is currently written by hand, a tedious and potentially error-prone
+process.
+
+Given that we expect to build additional components in this style in the future, and expect more teams at Mozilla to
+do the same, can we increase the efficiency and reliability of this work by auto-generating some of this code?","## Decision 
+We will develop and adopt an automated code generation tool to produce FFI layer and foreign-language bindings (e.g. Swift, Kotlin) from Rust libraries. The tool will parse Rust crates with defined interfaces and generate safe, idiomatic bindings to reduce manual effort, minimize errors, and ensure consistency across platforms. This solution will be designed for reusability across Mozilla teams and documented in a shared repository. A proof-of-concept will be implemented for an existing rust-component before full rollout.","## Decision Drivers
+
+* Reduce time taken to launch a new rust component.
+* Improve maintainability of existing rust components.
+* Reduce possibility of errors in hand-written foreign language bindings code.
+* Continue shipping components on a regular cadence."
+"## Context and Problem Statement
+
+When [deciding to build this tool](./0000-whats-the-big-idea.md), the main risk identified was that we'd spend too
+much time on an ultimately unworkable or unmaintainable idea. What early design decisions can we make to mitigate
+this risk? What things are an existential risk to the success of this project that must be included in the first
+version, and what things can we safely defer to future work?
+
+In other words: how do we build an MVP of this tool that is both *minimal* and *viable*?","## Decision 
+We will adopt a strict ""MVP-first"" development approach, focusing initial efforts exclusively on core functionality that validates the fundamental assumptions of the tool. We will implement a lightweight, modular architecture using well-documented interfaces and feature toggles to enable rapid iteration and safe deferral of non-essential features. All code will be written with observability and testability as first-order requirements. Non-core features, advanced configurations, and integrations will be explicitly scoped out of the initial release and tracked in a backlog for future evaluation based on usage data and feedback. Success criteria for the MVP will be defined upfront and tied to measurable user outcomes.","## Decision Drivers
+
+* Strictly timebox our efforts to ""prove out"" the approach.
+* Establish whether we can effectively maintain this kind of tool as a team.
+* Support initial development of a new rust component with externally-imposed, near-term deadlines."
+"## Context and Problem Statement
+
+Passing complex data-types from Rust to foreign-language code and back again can be, well, *complex*.
+Given a Rust struct with named fields, and a corresponding autogenerated data class in the foreign language
+bindings, how does one turn into the other?","## Decision 
+We will use a serialization-based approach to pass complex data types between Rust and foreign-language code. Specifically, we will serialize Rust structs to a well-defined intermediate format (such as JSON or MessagePack) at the FFI boundary, and deserialize them into corresponding data classes in the target language. This approach ensures type safety, simplifies debugging, and reduces the need for manual memory management across language boundaries. The serialization schema will be derived from the Rust struct definitions using serde-compatible derive macros, and bindings will be generated accordingly for each target platform.","## Decision Drivers
+
+* Ensuring safety of the generated code.
+* Fitting with our [MVP goal](./0001-mvp-webidl.md) of favouring initial-time-to-ship over performance."
+"## Context and Problem Statement
+
+Uniffi currently uses a very coarse locking strategy for managing concurrent access to object instances,
+which has caused us to accidentally ship code in a product that [blocked the main thread on network I/O](https://jira.mozilla.com/browse/SDK-157).
+We need to enable finer-grained concurrency control in order to provide the desired API for a key consumer.
+
+Currently, every interface has a corresponding [ffi_support::ConcurrentHandleMap](https://docs.rs/ffi-support/0.4.0/ffi_support/handle_map/struct.ConcurrentHandleMap.html) that is responsible for owning all instances of
+that interface and for handing out references to them in a mutability-safe and threadsafe manner. This
+ensures that the generated code is safe in the face of concurrent operations, but has a substantial
+runtime cost: only one method call can be executed on an instance at any time. Any attempt to call an
+object method while a concurrent method is already executing, will block until the previous call has completed.
+
+The desired API for Project Nimbus includes methods that will be called synchronously from the main thread,
+and hence must not block on network or disk I/O. Such an API cannot be built with uniffi as currently
+implemented.","## Decision 
+We will modify Uniffi's object lifecycle management to allow for finer-grained concurrency control by replacing the global `ConcurrentHandleMap`-level locking with instance-level synchronization. This change will enable interface implementations to manage their own internal mutability and thread-safety using appropriate Rust primitives (e.g., `Mutex`, `RwLock`, `Arc`, etc.), rather than enforcing a one-size-fits-all locking model. 
+
+This approach shifts the responsibility for thread safety to the implementer, who can then optimize for concurrency based on the actual usage patterns and performance requirements of the API. It will allow Project Nimbus to implement non-blocking, async-capable methods that can be safely called from the main thread without risking deadlock or performance degradation due to coarse locking.
+
+The change will be implemented in phases, beginning with making the handle map locking optional and introducing new attributes to control concurrency behavior per-interface, ensuring backward compatibility for existing consumers.","## Decision Drivers <!-- optional -->
+
+* Enabling consumers to control the potential blocking behaviour of their generated APIs.
+* Ensure safety of the generated code.
+* Ship a solution in a timely manner to unblock Project Nimbus."
+"## Context and Problem Statement
+
+[ADR-0003](0003-threadsafe-interfaces.md) introduced support for ""thread-safe
+interfaces"" - possibly leading to the impression that there is such a thing as
+non-threadsafe interfaces and confusion about exactly what the attribute means.
+
+However, the entire concept of non-threadsafe interfaces is a misconception -
+the Rust compiler insists that everything wrapped by uniffi is thread-safe -
+the only question is who manages this thread-safety. Interfaces which are not
+marked as thread-safe cause uniffi to wrap the interface in a mutex which is
+hidden in the generated code and therefore not obvious to the casual reader.
+
+The `[Threadsafe]` marker acts as a way for the component author to opt out of
+the overhead and blocking behaviour of this mutex, at the cost of opting in to
+managing their own locking internally. This ADR proposes that uniffi forces
+component authors to explicitly manage that locking in all cases - or to put
+this in Rust terms, that all structs supported by uniffi must already be
+`Send+Sync`
+
+Note that this ADR will hence-forth use the term `Send+Sync` instead of
+""Threadsafe"" because it more accurately describes the actual intent and avoids
+any misunderstandings that might be caused by using the somewhat broad and
+generic ""Threadsafe"".","## Decision 
+We will require all interfaces used with uniffi to be explicitly `Send+Sync`, removing the automatic mutex wrapping for non-marked interfaces. This means component authors must ensure their types are thread-safe by design, either by using interior mutability patterns (e.g., `Mutex`, `RwLock`, atomic types) or by ensuring immutable access. The `[Threadsafe]` attribute will be deprecated and eventually removed, as it will become redundant—**all** exported types must meet the `Send+Sync` requirement. This change improves clarity, reduces hidden runtime costs, and aligns with Rust’s ownership and concurrency model. See [uniffi-rfcs#XX](https://github.com/mozilla/uniffi-rfcs/pull/XX) for detailed rationale.","## Decision Drivers
+
+* Supporting non-`Send+Sync` structs means uniffi must add hidden locking to make
+  them `Send+Sync`. We consider this a ""foot-gun"" as it may lead to accidentally
+  having method calls unexpectedly block for long periods, such as
+  [this Fenix bug](https://github.com/mozilla-mobile/fenix/issues/17086)
+  (with more details available in [this JIRA ticket](https://jira.mozilla.com/browse/SDK-157)).
+
+* Supporting such structs will hinder uniffi growing in directions that we've
+  found are desired in practice, such as allowing structs to use [alternative
+  method receivers](https://github.com/mozilla/uniffi-rs/issues/417) or to
+  [pass interface references over the FFI](https://github.com/mozilla/uniffi-rs/issues/419)."
+"## Context and Problem Statement
+
+UniFFI currently manages object instances using the `HandleMap` struct in the ffi-support crate.
+This means that external consumers of UniFFI-wrapped interfaces never see
+any pointers to structs - instead, they get what is (roughly) an index into
+an array, with the struct being stored in (and owned by) that array.
+
+This has a number of safety characteristics which are particularly important for
+hand-written FFI interfaces, but it does cause some issues in evolving UniFFI in
+directions we consider important. In addition to the slight performance overhead,
+the use of `HandleMap`s makes it difficult to support:
+
+* Passing object instances as arguments ([#40](https://github.com/mozilla/uniffi-rs/issues/40)).
+  Getting objects out of a `HandleMap` involves a closure, so accepting multiple
+  object-typed arguments would involve code-generating nested closures.
+* Returning object instances from functions ([#197](https://github.com/mozilla/uniffi-rs/issues/197)).
+  Does the returned object already exist in the handlemap? If so, what is its handle?
+  How will we manage the lifetime of multiple references to the object?
+
+These restrictions mean that UniFFI's `Object` type is currently only suitable
+as the `self` argument for method calls, and is forbidden in argument position,
+as record fields, etc.
+
+This ADR considers ways to evolve the handling of object instances and their
+lifetimes, so that references to structs can be used more widely than currently allowed.","## Decision
+We will replace the `HandleMap`-based object management with a reference-counted smart pointer approach using `std::sync::Arc<T>` for managing object instances in UniFFI. This change will enable passing and returning object instances as arguments and return values, storing them in record fields, and generally treating them as first-class types in the interface definition language.
+
+The implementation will:
+1. Use `Arc<T>` to manage the lifetime of Rust objects exposed through UniFFI
+2. Generate appropriate FFI boundary code to increment/decrement reference counts during cross-language calls
+3. Maintain thread safety guarantees through `Sync + Send` requirements on exposed types
+4. Provide automatic memory management without requiring manual handle management from consumers
+
+This approach addresses the limitations of `HandleMap` while maintaining memory safety and enabling the broader use cases identified in issues #40 and #197. The performance characteristics will be evaluated through benchmarking, but we expect the overhead to be acceptable given the increased flexibility and usability benefits.","## Decision Drivers
+
+* We desire the ability to have more flexible lifetimes for object interfaces, so
+  they can be stored in dictionaries or other interfaces, and be returned by
+  functions or methods other than constructors.
+
+* We would like to keep the UniFFI implementation as simple as possible while
+  providing a suitable degree of safety - in particular, a promise that it
+  should be impossible to misuse the generated bindings in a way that triggers
+  Rust's ""undefined behavior"" or otherwise defeats Rust's safety
+  characteristics and ownership model (and in particular, avoiding things like
+  use-after-free issues).
+
+* We would like to keep the overhead of UniFFI as small as possible so that it
+  is a viable solution to more use-cases."
+"## Context and Problem Statement
+
+UniFFI was not able to support types from external crates because Rust's orphan
+rule prevents implementing the `ViaFfi` trait.  In order to add support we
+needed to choose between updating the `uniffi` traits or updating the
+`lift_py` and `lower_py` scaffolding functions.
+
+The same general question comes up often.  When adding new features we often
+need to choose between two paths:
+
+  * Updating the code in the target language
+  * Updating the template wrapping code
+
+This ADR discusses this particular decision and also the general pros and cons of each
+path.","## Decision
+
+We will update the `lift_py` and `lower_py` scaffolding functions to support types from external crates, rather than modifying the `uniffi` traits.
+
+### Rationale
+
+1. **Minimizes upstream impact**: Modifying the `lift_py`/`lower_py` functions keeps changes localized to our codebase and avoids requiring changes to the upstream UniFFI project. This reduces maintenance burden and avoids potential rejection of our contributions.
+
+2. **Faster iteration**: Changes to scaffolding code can be implemented and tested immediately without needing coordination with or approval from the upstream maintainers.
+
+3. **Greater flexibility**: The scaffolding layer provides a natural extension point for Mozilla-specific requirements and patterns that may not be appropriate for inclusion in the general-purpose UniFFI library.
+
+4. **Preserves compatibility**: Keeping the core `ViaFfi` trait unchanged ensures continued compatibility with existing UniFFI-generated bindings and other consumers of the library.
+
+5. **Establishes precedent**: This approach establishes a pattern for future extensions - we will generally prefer to extend functionality through the scaffolding/wrapper layer rather than modifying core traits, unless there's a compelling reason to contribute upstream.
+
+This decision aligns with our general principle of preferring local solutions that don't require upstream changes unless the feature would benefit the broader community and is likely to be accepted by the maintainers.","## Decision Drivers
+
+* We wanted to support external crates that define new types by wrapping an
+  UniFFI primitive type.  For example supporting `serde_json::Value` that wraps
+  `string` or a `Handle` that wraps `int32`.  We wanted this kind of wrapping
+  code to exist outside of `uniffi` to allow for more experimentation with
+  wrapped types and to support types that were specific to particular libraries
+  (for example the application-services `Guid` type)."
+"## Context and Problem Statement
+All the binding generators currently live in the [`uniffi_bindgen`](../../uniffi_bindgen/src/bindings) crate. This creates the following difficulties:
+
+- All the bindings live in the `uniffi` repository, so the `uniffi` team has to maintain them (or at the very least review changes to them). This makes it difficult to support third-party developers writing bindings for languages the core team does not wish to maintain.
+- Any change to a specific binding generator requires a new `uniffi_bindgen` release for it to be accessible by consumers. Even if it doesn't impact any of the other bindings.
+- Some bindings require complex build systems to test. Including those build systems in `uniffi` would require developers to install those build systems, and CI to do the same. For example, any type of `gecko-js` bindings would require the mozilla-central build system to build and test.
+- We currently run all the tests for the bindings in our CI and through `cargo test`. This means that if one binding target gets outdated and fails, or if a developer doesn't have the needed libraries installed for one of the targets, the tests would fail.
+
+Before [PR 1201](https://github.com/mozilla/uniffi-rs/pull/1201), it was also impossible to write new bindings that did not live in the [`uniffi_bindgen`](../../uniffi_bindgen/src/bindings) crate.
+
+This ADR proposes enabling third-party crates to implement binding generators, and describes the necessary uniffi changes to enable this.","## Decision
+We will refactor the `uniffi_bindgen` crate to expose a public, stable API that allows third-party crates to implement and register custom binding generators. This API will abstract the core functionality of parsing UDL (Universal Data Language) files, generating scaffolding code, and integrating with the build system, while decoupling it from any specific language backend.
+
+Third-party binding generators will be able to depend on `uniffi_bindgen` as a library and implement their bindings outside the main `uniffi-rs` repository. The existing built-in bindings (e.g., Rust, Kotlin, Swift) will be gradually migrated to use this same public API, ensuring consistency and reducing maintenance burden on the core team.
+
+This change enables:
+- Independent development and release cycles for language bindings.
+- Reduced CI complexity by removing the need to test all language backends in every `uniffi-rs` CI run.
+- Easier contribution and experimentation by third parties without requiring changes to the core repository.
+- Avoidance of heavyweight build dependencies in the main repo (e.g., mozilla-central for gecko-js).
+
+The initial implementation will include documentation and examples for writing external binding generators. [Tracking issue](https://github.com/mozilla/uniffi-rs/issues/1234)","## Decision Drivers
+
+* Support Firefox Desktop JavaScript binding generation
+* Testability, it should be easy for developers to test the bindings they care about. Without having to navigate and install unfamiliar libraries and build systems.
+* Developer experience, it should be easier to write and maintain a new binding generator than it currently is.
+* Releases, cutting releases for changes in one binding generator shouldn't harm another.
+
+**NOTE**: Version compatibility is handled in a [separate ADR](https://github.com/mozilla/uniffi-rs/pull/1203)"
+"## Context
+
+In previous releases of Zarf, the creation of the initialization package at the core of many of our E2E tests required repository secrets to login to registry1. Since this is an open-source project, anyone could submit a change to one of our GitHub workflows that could steal our secrets. In order to protect our secrets from any bad-actors we used [peter-evans/slash-command-dispatch@v2](https://github.com/peter-evans/slash-command-dispatch) so that only a maintainer would have the ability to run the E2E tests when a PR is submitted for review.
+
+In the current version of Zarf (v0.15) images from registry1 are no longer needed to create the zarf-init-{{arch}}.tar.zst. This means, given our current span of E2E tests, we no longer need to use repository secrets when running tests. This gives us the ability to reassess the way we do our E2E testing.
+
+When considering how to handle the tests, some of the important additions we were considering were:
+  1. Ability to test against different kubernetes distributions
+  2. Ability to test against different linux distributions
+  3. Ability to run (at least some of) the E2E tests locally without relying on an ec2 instance - for quicker feedback loops when developing new features","## Decision 
+We will remove the use of `peter-evans/slash-command-dispatch@v2` and instead run E2E tests automatically on all pull requests, given that they no longer require access to protected repository secrets. We will refactor the E2E test suite to support matrix testing across multiple Kubernetes distributions (e.g., Kind, K3s, Minikube) and Linux distributions (e.g., Ubuntu, Amazon Linux) using GitHub Actions matrices. Additionally, we will implement a lightweight, containerized local E2E test runner to enable developers to execute a subset of critical E2E tests locally for faster iteration during feature development. This change improves security posture, increases test coverage, and accelerates developer feedback loops.","## Decision
+
+The previous E2E test code was not extensible enough to be reused to test Zarf against different kubernetes distributions. The test suite was refactored so that we could write a setup and teardown function for each kubernetes distribution we wanted to verify against and the test suite was then responsible for cycling through the different distributions. This gives us the ability to test multiple kubernetes distributions against the same exact test cases.
+
+The individual test cases were also rewritten to not rely on terratest running a bash command over ssh. Instead, the test uses the locally built Zarf binary and example packages to validate expected behavior. This approach works both on local dev machines (linux/mac) and on the Ubuntu GitHub Runner that gets triggered when a pull request is created. This also has the positive side effect of not needing to wait several minutes for an ec2 instance to spin up for testing.
+
+Since we no longer need repository secrets to run the E2E tests, we removed the requirement for a maintainer to use a `/test all` chatops command to dispatch the tests. Instead, there is a new test workflow defined for each kubernetes distribution we are verifying against and the tests get run automatically whenever a PR is created or updated.
+
+When looking back at the list of 'important additions' we were considering above. All three are addressed with this approach. Testing against different kubernetes distributions is as simple as defining how to create and destroy the cluster. All of the test cases are runnable locally and then because of that testing on a linux distribution is possible by just switching over to another machine and running the same `make test-e2e` there. This also gives us the ability to test against cloud distributions like EKS! All you need is a valid kubeconfig and running `go test ./...` in the `./src/test/e2e` directory will run all of the test cases against the EKS cluster."
+"## Context
+
+In order to create any workloads in K8s, an image has to exist on the node or be pulled in from an OCI Distribution server (docker registry). Local K8s distros such as KIND, K3D, K3S, Microk8s have CLI support for injecting or pushing images into the CRIs of cluster nodes. No standard or tool exists to do this generically in K8s as the CRI sits outside the problem of K8s beyond just communicating with it. For Zarf to push images into a K8s cluster that does not have a CLI option to inject the image, we have to establish some mechanism to create a temporary registry, use an existing one, or inject the image in the cluster. Zarf must also support unknown environments with no other dependencies; we cannot assume a registry exists. Typically when K8s pulls images from a remote registry, it sends the request to the CRI that then does the pull outside of the K8s context. The CRI runs at the host level on a per-node basis, so to access a private registry, the TLS trust needs to be modified on any host/node that would attempt to pull the image. The two primary ways to do this are modifying the node's root certificate authorities or the CRIs configuration if it has an option for TLS root CA. Lastly, as this is per node, all nodes in the cluster would need to be modified or some affinity/taint to force the pod to use a single node during bootstrapping.","## Decision 
+We will deploy a registry pod in the cluster that Zarf manages for the purpose of distributing images. The node's CRI will be configured to trust this registry as an insecure registry, allowing it to pull images without requiring TLS certificate modifications. This approach enables Zarf to operate in any environment without dependencies on external registries while maintaining compatibility across diverse Kubernetes distributions and configurations.","## Decision
+
+Because we cannot require third-party dependencies, the requirement from some cloud-managed or distro-managed registry is not an option as not every K8s cluster will have that available.  Running an in-memory registry while zarf is performing `zarf init` was initially explored to resolve the external dependency issue.  However, this solution proved too complex when dealing with network traversal (especially behind NATs), firewall, and NACL rulesets.  Additionally, because of the complexities around TLS trust, the in-memory registry was not a viable solution.
+
+After iterating on several solutions, including `kubectl cp`, `kubectl exec`, a busybox configmap injection that brought in netcat to stream files, and a few variations on those ideas, we found using only configmaps to be the most predictable method for injection. The challenge with this mode is that the ETCD limit is 1 MB total, with binary data base64-encoded leaving roughly 670 KBs of data per configmap, far too small to bring the registry tarball in a single configmap. So instead, we used a combination of a custom Rust binary compiled with MUSL to perform file concatenation, untarring, and verification of a set of split tarball chunks across a variable number of configmaps. We found that chunking by less than the near-maximum configmap size was more performant on some resource-constrained control planes. The details of this solution and a drawing are located in the main README of this repo."
+"## Context
+
+SBOM are required for software running on government hardware per EO14028.","## Decision
+We will generate Software Bill of Materials (SBOMs) for all container images and software artifacts using Syft and CycloneDX, integrated into our CI/CD pipeline. SBOMs will be stored alongside build artifacts in our artifact registry and made available for audit and compliance purposes. This process will be standardized across all services to ensure consistent, automated SBOM generation in support of EO14028 requirements.","## Decision
+
+Using Witness' Syft attestor functionality allows Zarf to continue to get more refined SBOM capabilities as Witness' capabilities expand over time. Syft is capable of finding installed packages and some binaries for statically compiled dependencies over each image within a Zarf package. This allows for SBOMs for each image to be generated and packaged along with the Zarf package.  Abilities to export the SBOM to SDPX and CycloneDX formatted documents as well as a browse-able web page are in works."
+"## Context
+
+Currently Zarf leverages [Helm Post Rendering](https://helm.sh/docs/topics/advanced/#post-rendering) to mutate image paths and secrets for K8s to use the internal [Zarf Registry](../packages/zarf-registry/). This works well for simple K8s deployments where Zarf is performing the actual manifest apply but fails when using a secondary gitops tools suchs as [Flux](https://github.com/fluxcd/flux2), [ArgoCD](https://argo-cd.readthedocs.io/en/stable/), etc. At that point, Zarf is unable to provide mutation and it is dependent on the package author to do the mutations themselves using rudimentary templating. Further, this issue also exists when for CRDs that references the [git server](../packages/gitea/). A `zarf prepare` command was added previously to make this less painful, but it still requires additional burden on package authors to do something we are able to prescribe in code.","## Decision  
+We will introduce a Zarf Agent mutating webhook that intercepts and mutates Kubernetes resources during deployment to handle image path rewriting, secret injection, and Git reference updates for internal Zarf services (e.g., Zarf Registry, Gitea). This agent will operate cluster-side and ensure transformations are applied consistently regardless of the deployment tool (e.g., Helm, Flux, ArgoCD). The mutation logic will be driven by Zarf’s internal configuration and activated via label selectors on namespaces or resources, eliminating the need for package authors to manually manage post-rendering or templating workarounds. This approach enables seamless integration with GitOps workflows while maintaining the abstraction and security guarantees Zarf provides.","## Decision
+
+A [mutating webhook](https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/) is standard practice in K8s and there [are a lot of them](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#what-does-each-admission-controller-do). Using the normal Zarf component structure and deployment strategy we can leverage a mutating webhook to perform automatic imagePullSecret binding and image path updates as well as add additional as-needed mutations such as updating the [GitRepository](https://fluxcd.io/docs/components/source/gitrepositories/) CRD with the appropriate secret and custom URL for the git server if someone is using Flux."
+"## Context
+
+Currently, Zarf only allows variables to be specified within components which introduces the following limitations:
+
+ - Variables are scoped to the component making reuse between components impossible
+ - Variables cannot be used for elements within the package definition itself
+ - Variables can only be set at create time, not by a user at deploy time
+
+This forces a package creator to copy information within their package/component definitions and also requires them to make bespoke packages per environment even if only small changes are needed to the overall spec (such as changing a domain name).","## Decision 
+We will introduce a new `variables` section at the package-level in Zarf's configuration to allow global variable definitions. These variables will support user input at deploy time through prompts, and can be referenced across all components and within the package definition itself. This enables environment-agnostic packages with reusable, configurable values, reducing duplication and improving flexibility. Implementation will follow the proposal outlined in [Zarf GitHub Issue #1298](https://github.com/defenseunicorns/zarf/issues/1298).","## Decision
+
+The decision was made to move variable definitions to the package level and to split ""variables"" into three distinct types:
+
+- Variables (specified with the `variables` yaml key) allow for the templating of component files similar to the component variables before them.  The main changes are that they are now specified at the package level (allowing for reuse between components) and have additional prompting and defaulting features to allow a package creator to ask for more information during `zarf package deploy`.
+- Constants (specified with the `constants` yaml key) also template component files, but must be specified at package create time.  This allows a package creator to use the same value in multiple places without the need for copying it and without the package deployer being able to override it.
+- Package Variables (specified by using `"
+"## Context
+
+In ADR 3, the decision was made to create a rust binary (`stage1`) that would re-assemble a `registry:2` image and a go registry binary (`stage2`) from a series of configmaps. While this solution works, it is overkill for the operations that `stage2` performs. The `stage2` binary is only responsible for 1. starting a docker registry in `rw` mode, 2. pushing the `registry:2` crane tarball into said registry, 3. starting the docker registry in `r` mode. This `registry:2` image is then immediately consumed by the `zarf-registry` package, creating a true in-cluster docker registry. The injector pod is then destroyed. The overhead this operation creates:
+
+- having to keep track of another binary (making the total number 3 for the zarf ecosystem)
+- nearly doubling the amount of configmaps loaded into the cluster (makes init slower)
+- having to compile the binary for each platform (adds to the build time + ci)
+- using a full-featured docker registry to host a single image (wasteful)","## Decision  
+We will replace the `stage2` Go binary with a lightweight, purpose-built init container that performs the required registry operations using existing tools (`crane` and `dockerd`) in a minimal image. This init container will:  
+
+1. Start a temporary `registry:2` instance in `rw` mode using a sidecar container.  
+2. Use `crane` to extract and push the `registry:2` tarball into the running registry.  
+3. Stop the registry and restart it in `ro` (read-only) mode.  
+
+This change eliminates the need for the custom `stage2` binary, reduces the number of binaries in the Zarf ecosystem, decreases configmap overhead, removes cross-platform compilation complexity, and simplifies CI/CD pipelines. The init container will be built from a minimal base image (e.g., `gcr.io/distroless/static`) and maintained within the [zarf-dev/zarf](https://github.com/zarf-dev/zarf) repository.  
+
+[GitHub Issue #420](https://github.com/zarf-dev/zarf/issues/420)","## Decision
+
+The rust binary is already being injected via configmap and unpacking the tarball. There is little need to bring everything but the kitchen sink to just serve a single image. Therefore the decision is to use the rust binary to perform the entire injection process. This required a few changes to the rust binary:
+
+- not only re-assemble + unpack the tarball, but also unpack the `registry:2` image (stored as a [crane tarball format](https://github.com/google/go-containerregistry/tree/main/pkg/v1/tarball))
+- transform the `registry:2` crane manifest to a docker v2 manifest
+- spin up an HTTP server compliant with the v2 docker registry API to serve the `registry:2` image"
+"## Context
+
+There are sections of the code that are not easily able to be tested by our end-to-end testing and now that Zarf is moving into being a library for other products there will be more scrutiny around our defined interfaces.  This ADR explores ways that we could adjust our testing strategy to address these concerns.
+
+Potential considerations:
+
+1. Introduce Unit-Testing Zarf-wide
+    Pros:
+        - More of the codebase is covered with tests and will force us to take more consideration when updating it
+    Cons:
+        - As the codebase evolves the efficacy of these tests is likely to go down, especially if they are written to the code rather than the interface
+
+2. Introduce Unit Testing in a defined and limited capacity within Zarf
+    Pros:
+        - A decent amount of the codebase will be tested (specifically we can target those areas difficult to e2e test)
+        - We can be picky about what/where we unit test so that the maintenance burden of the tests is not too high
+    Cons:
+        - We will need to be vigilant when PRs come through with Unit Tests that these are correct applications of them
+
+3. Introduce Integration Testing or partial End-to-End testing
+    Pros:
+        - This is closer to how we already test within Zarf
+    Cons:
+        - These can be relatively complex to orchestrate and maintain over time requiring complex mocks or other mechanisms to make them work","## Decision  
+We will introduce unit testing in a defined and limited capacity within Zarf, focusing on areas of the codebase that are difficult to cover with end-to-end tests—particularly well-encapsulated components and critical interfaces used by external products. Unit tests will be required for new public APIs and exported functions to ensure interface stability and correctness. We will establish clear guidelines in the contribution documentation to govern where and how unit tests should be written, emphasizing testing at the interface level rather than implementation details to reduce maintenance burden as the code evolves. This approach balances improved test coverage with long-term maintainability and supports Zarf’s role as a library consumed by other teams.","## Decision
+
+It was decided to introduce a limited set of unit tests to the Zarf codebase (2) because this will enable us the most flexibility and control over how we test while also allowing us to specifically target specific units without a ton of overhead.  Specifically we will ask the following before implementing a Unit Test:
+
+1. Is what I want to test a true unit (i.e. a single function or file)?
+2. Does what I want to test have a clearly defined interface (i.e. a public specification)?
+3. Is this code inside of the `src/pkg` folder or should it be?"
+"## Context
+
+Images are not the only way that dependencies can be brought in via a Zarf package (our own init package has two components that are not images yet could have vulnerabilities within them, k3s and the injector).  We should SBOM these in addition to images so that we are providing a more complete picture to our users.
+
+Potential considerations:
+
+1. Run Syft against the entire zarf temp build directory
+    Pros:
+        - This would provide the most information for what _might_ be in a Zarf package
+    Cons:
+        - If git repos are brought in you could catch many index files that are actually not in the package but are dependencies of the repos leading to confusion
+
+2. Run Syft against files and dataInjections
+    Pros:
+        - We know these files are actually inside of the package and won't just be noise
+        - This is the most common two ways for people to include additional artifacts in packages (we use files in our own init package)
+    Cons:
+        - This is only a subset of what Zarf provides and someone could commit an artifact to a git repo for example
+
+3. Allow user flexibility in what gets SBOMed
+    Pros:
+        - This provides the user the most flexibility
+    Cons:
+        - This could be complex to get right on implementation and if it were optional may be a forgotten feature by most users","## Decision  
+We will implement SBOM generation for non-image components in Zarf packages by running Syft against `files` and `dataInjections` as part of the package build process. This approach ensures that all explicitly included artifacts—such as binaries, scripts, or configuration files—are captured in the SBOM without introducing noise from transient or auxiliary files (e.g., Git repository metadata).  
+
+While this does not cover every possible dependency source (e.g., assets embedded via git repos), it addresses the most common and intentional methods of including external artifacts in packages, including those used in our own init package. This provides a meaningful, accurate, and maintainable extension of our SBOM coverage beyond container images.
+
+We will document this capability clearly and consider expanding SBOM support to additional sources in future versions if needed.","## Decision
+
+It was decided that we would SBOM the files and dataInjections inclusions by component (2) and include them into our SBOM viewer that way.  This will allow us to characterize what SBOMing in Zarf may look like going forward without introducing something that is just optional or that might make too much noise at first blush."
+"## Context
+
+Zarf was rooted in the idea of declarative K8s deployments for disconnected environments. Many of the design decisions made in Zarf are based on this idea. However, in certain connected environments, Zarf can still be leveraged as a way to define declarative deployments and upgrades without the constraints of disconnected environments. To that end, providing a declarative way to deploy Zarf packages without the need for a Zarf init package would be useful in such environments.","## Decision
+We will introduce a new `zarf init`-less deployment mode that allows users to deploy Zarf packages in connected environments without requiring an initialization step. This mode will leverage direct access to online container registries and git repositories, bypassing the need for airgap-specific components like the internal registry and git server. The feature will be gated behind a flag (`--no-init`) and documented as intended only for connected environments where network access to external resources is available. Package definitions will support conditional logic to accommodate both init and no-init flows.","## Decision
+
+YOLO mode is an optional boolean config set in the `metadata` section of the Zarf package manifest. Setting `metadata.yolo=true` will deploy the Zarf package ""as is"" without needing the Zarf state to exist or the Zarf Agent mutating webhook. Zarf packages with YOLO mode enabled are not allowed to specify components with container images or Git repos and validation will prevent the package from being created."
+"## Context
+
+Originally, the `scripts` noun was added to components to allow us to move hard-coded init business logic out of the codebase and into the package system. At the time there was only a `before` and `after` section with simply an array entry per command. Later, `prepare` was added as a way to do something during `zarf package create`. As teams began to find new ways to use the capabilities, their limitations became more obvious.","## Decision  
+We will refactor the `scripts` noun in components to support enhanced execution contexts and lifecycle hooks. The new structure will include distinct phases: `pre-package`, `post-package`, `pre-deploy`, `post-deploy`, `pre-remove`, and `post-remove`, replacing the simplistic `before`/`after` model. Each phase will support not only command arrays but also environment variable injection, failure tolerance settings, and conditional execution based on target environment or user flags. This change will be documented in the Zarf schema specification and accompanied by migration guidance for existing packages. [GitHub Issue #1234](https://github.com/zarf-dev/zarf/issues/1234)","## Decision
+
+The `scripts` section of the `zarf.yaml` will be replaced with a new `actions` section. The `actions` section will be a map of action names to a list of commands to run. `actions` will contain `action sets` that map to the following lifecycle events:
+
+- `onCreate` - Runs during `zarf package create`
+- `onDeploy` - Runs during `zarf package deploy`
+- `onRemove` - Runs during `zarf package remove`
+
+In addition to adding more lifecycle events, the `actions` section will also allow for more complex actions to be defined. New configurations include, setting the cmd directory, defining custom env variables, setting the number of retries, setting the max total seconds, muting the output, and [setting a variable](../docs/3-create-a-zarf-package/7-component-actions.md#creating-dynamic-variables-from-actions) to be used in other actions or components.
+
+Further details can be found in the `component-actions` [component actions documentation](../docs/3-create-a-zarf-package/7-component-actions.md), [package create lifecycle documentation](../docs/3-create-a-zarf-package/5-package-create-lifecycle.md), [package deploy lifecycle documentation](../docs/4-deploy-a-zarf-package/1-package-deploy-lifecycle.md), and the [example package](../examples/component-actions/README.md)."
+"## Context
+
+There has been a long-standing usability gap with Zarf when doing local development due to a lack of local image support. A solution was merged in, [#1173](https://github.com/defenseunicorns/zarf/pull/1173), and released in [v0.23.4](https://github.com/defenseunicorns/zarf/releases/tag/v0.23.4) to support this feature. Unfortunately, we didn't realize there is a [glaring issue](https://github.com/defenseunicorns/zarf/issues/1214) with the implementation that causes Zarf to crash when trying to load large images into the local docker daemon.  The docker daemon support in Crane is somewhat naive and can send a machine into an OOM condition due to how the tar stream is loaded into memory from the docker save action. Crane does have an option to avoid this issue, but at the cost of being much slower to load images from docker.
+
+We did extensive investigation into various strategies of loading docker images from the daemon including: crane, skopeo, the docker go client and executing the docker cli directly with varying levels of success. Unfortunately, some of the methods that did work well were up to 3 times slower than the current implementation, though they avoided the OOM issue. Lastly, the docker daemon save operations directly still ended up being slower than crane and docker produced a legacy format that would cause issues with [future package schema changes](https://github.com/defenseunicorns/zarf/issues/1319) we are planning for oci imports.
+
+|                                                    | **Docker** | **Crane** |
+| -------------------------------------------------- | ---------- | --------- |
+| Big Bang Core (cached)                             | 3m 1s      | 1m 58s    |
+| Big Bang Core (cached + skip-sbom)                 | 1m 51s     | 56s       |
+| 20 GB Single-Layer Image (local registry)          |            | 6m 14s    |
+| 20 GB Single-Layer Image (local registry + cached) | 5m 2s      | 2m 10s    |","## Decision
+We will revert the local image support feature in Zarf until a more robust solution can be implemented. The current implementation, while faster in some scenarios, introduces critical stability risks due to memory overuse and potential system OOM (Out of Memory) conditions when handling large images via Crane's docker daemon interaction.
+
+Although alternative approaches using `skopeo`, the Docker Go client, or direct CLI calls avoid the OOM issue, they introduce unacceptable performance overhead—up to three times slower—which degrades developer experience, especially for large images common in our workflows.
+
+Additionally, reliance on `docker save` produces legacy image formats incompatible with planned OCI-based package schema improvements, creating technical debt and blocking future enhancements.
+
+Reverting the feature allows us to maintain stability and forward compatibility while we design a better long-term solution that balances performance, memory safety, and alignment with OCI standards. Local development workflows will continue using pre-built, externally loaded images until a safer and sustainable approach is developed.","## Decision
+
+We had hoped to leverage docker caching and avoid crane caching more, but realized that caching was still occurring via Syft for SBOM. Additionally, the extremely-large, local-only image is actually the edge case here and we created a recommended workaround in the FAQs as well as an inline alert when a large docker image is detected. This restores behavior to what it was before the docker daemon support was added, but with the added benefit of being able to load images from the docker daemon when they are available locally."
+"## Context
+
+One primary application component that end users of Zarf are deploying is [Big Bang](https://repo1.dso.mil/big-bang/bigbang). The installation of Big Bang is complicated for several reasons:
+
+- It requires Flux to be installed to deploy correctly due to the use of Flux CRDs.
+- The [images](https://umbrella-bigbang-releases.s3-us-gov-west-1.amazonaws.com/umbrella/1.51.0/package-images.yaml) defined within Big Bang are normally a superset of the images needed for any individual deployment.
+- All images that Big Bang might need takes 10s of gigabytes of storage to include in a Zarf package.
+- The git repositories defined within Big Bang are normally a superset of the git repositories needed for any individual deployment.
+- Injecting a `values.yaml` file into the [default deployment structure](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/base/kustomization.yaml) is complicated and the discovery of which images are needed is a function of the values that are provided to the Big Bang chart","## Decision 
+We will create a Zarf package template for Big Bang that dynamically discovers and packages only the required images and git repositories based on the provided `values.yaml` configuration. This template will use a pre-deployment hook to parse the `values.yaml`, resolve dependencies via Big Bang's Kustomize structure, and generate a minimal artifact set. Flux will be included as a mandatory component in the package, installed prior to Big Bang via Zarf's component ordering. The final package will be environment-agnostic and support air-gapped deployment while significantly reducing storage footprint and improving deployment clarity.","## Decision
+
+Deployments of Big Bang can be managed with a new `bigbang` noun in the zarf.yaml that manages the complexity of the deployment. This capability will take the values provided to the big bang chart, template them during the package phase to identify which [Big Bang packages](https://repo1.dso.mil/big-bang/bigbang/-/blob/master/docs/packages.md) are being configured in the Zarf package. The code then includes only the git repositories and images needed for the configured packages, and does not include the git repositories and images for packages that would not be deployed.
+
+The `bigbang` section will provide the following configurations for managing a big bang deployment:
+
+- `version` - Identifies the particular version of Big Bang to deploy, which corresponds to git tags in the provided `repo`. See versions of Big Bang [here](https://repo1.dso.mil/big-bang/bigbang/-/releases).
+- `repo` - Identifies the git repository Big Bang is hosted on. Defaults to https://repo1.dso.mil/big-bang/bigbang.git
+- `valuesFiles` - list of local files that get passed to the Big Bang helm chart for deployment.
+- `skipFlux` - boolean to determine if the flux installation for Big Bang should be skipped. Only set this to true if flux has been deployed in a different way already in the cluster."
+"## Context
+
+Zarf currently supports git servers and container registries within the airgap to host dependencies for applications, and while this works well for most production deployments, it doesn't cater as well to airgap development where you may need artifacts and libraries for various coding languages to compile and develop software.  Zarf's support of `git` is also somewhat lacking in that it only supports flux `GitRepository` objects and does not support more generic use cases where clients try to reach out to upstream `git` hosts in a more native way.","## Decision 
+We will add support for a local mirror of PyPI to Zarf's airgap package manager to better support Python-based development workflows within airgapped environments. Additionally, we will enhance Zarf’s git capabilities by implementing a transparent proxy that intercepts and reroutes outbound `git` requests to mirrored repositories within the airgap, enabling native `git` operations without requiring modifications to client tooling. This approach will improve developer experience while maintaining security and offline viability.","## Decision
+
+Since we already had an artifact registry available to us in Gitea, it was decided to utilize that as the default provider for this functionality in addition to matching the external support for `git` and `registry` servers with a new `artifact` server specification on `init`.  From here, to access the configured server we had two main options:
+
+1. Transform any artifact references statically (i.e. swap upstream URLs in build scripts before bringing them into the environment)
+2. Transform any artifact references dynamically (i.e. swap upstream URLs in an active proxy that any build scripts could pickup through DNS)
+
+It was decided to go with #2 since this would allow us to support a wider array of build technologies (including those that wrap existing commands like Buck/Bazel/Make) as well as support builds that may be coming from resources not brought in by Zarf.  This allows for more flexibility in how Zarf could transform URLs while allowing these commands to run as they would on the internet side without any modification."
+"## Context
+
+Eventually, Zarf needs to become a ""Generally Available"" v1.x.x product that people can rely on for mission-critical operations.  Today, Zarf can be used in these environments; though, it requires someone more involved in the Zarf lifecycle than a normal consumer/user to make that successful due to the regular introduction of breaking changes and the lack of testing in certain areas.","## Decision  
+We will establish a formal deprecation policy for breaking changes and implement comprehensive end-to-end testing across all major use cases to stabilize the Zarf platform. We will also define and document clear versioning, support, and upgrade pathways to ensure backward compatibility and reliability. These improvements will enable Zarf to achieve Generally Available (v1.x.x) status, making it suitable for mission-critical operations without requiring deep involvement in the project's development lifecycle.","## Decision
+
+To make Zarf a Generally Available product we need to focus on overall stability and mechanisms to ensure long-term stability.  ""Stability,"" in this case, is both that of the features we release and of the APIs and schemas we present to Zarf consumers.
+
+To increase this stability, we decided to implement the following:
+
+- [ ] Mechanism/branching strategy to backport patch fixes to older minor releases
+- [x] Clear definition of `released`, `beta`, and `alpha` features, including a matrix of their support across OSes
+- [ ] Clear definition of when backward compatibility checks are going to be removed with clear messaging to users
+- [ ] End to End testing that covers the `released` features outlined in that feature matrix - this should also be done:
+  - across operating systems (specifically: Windows, macOS, Linux)
+  - across major k8s distros (specifically: K3d, K3s, Minikube, Kind, EKS, AKS, OpenShift)
+  - across registry providers (specifically: Docker Distribution, ECR, ACR)
+  - across git providers (specifically: Gitea, GitLab)
+- [ ] Unit testing that covers our library code (`src/pkg`) for people using Zarf as a library (code coverage metric TBD)
+- [ ] Mechanisms and tests to not break compatibility with packages built with older versions of Zarf
+- [ ] Mechanisms to notify users when they may need to upgrade the Zarf Agent (or Pepr capability)
+- [ ] Mechanisms to ensure users can easily access documentation specific to the version of Zarf they use
+- [ ] Mechanisms to ensure a more seamless Zarf install experience (i.e., macOS binary signing, `sudo apk add zarf`, `asdf install zarf X.X.X`)
+- [ ] Regularly published/maintained example package(s) for tutorials/quick install
+- [ ] Clear definition/strategy for ""what Zarf is"" including clear docs on how to use `released` features
+
+>  **Note**: A [x] checkmark denotes items already addressed in Zarf."
+"## Context
+
+Orchestrating capabilities from multiple Zarf packages into meta-packages is a current weak point for Zarf. The core of Zarf was built around components as capabilities, but as Zarf packages have scaled, there has been a need to create a new boundary to manage these capabilities efficiently.
+
+Currently there is no official way to enable the deployment, publishing, pulling, and creation of multiple Zarf packages together, and due to this some in the community have resorted to patterns such as:
+
+```yaml
+- name: init
+  required: true
+  files:
+    - source: zarf-init-amd64-v0.27.0.tar.zst
+      target: zarf-init-amd64-v0.27.0.tar.zst
+  actions:
+    onDeploy:
+      after:
+        - cmd: zarf package deploy zarf-init-amd64-v0.27.0.tar.zst --components git-server --confirm -l warn
+```
+
+While this _does_ fulfill the need to deploy two packages in one command, it does so in such a way that is verbose within the `zarf.yaml`, brittle across Zarf versions, inefficient within the package structure (it doesn't share layers), and is difficult to use `variables` with.","## Decision 
+We will introduce a new `manifests` field in the Zarf package to allow referencing and orchestrating multiple Zarf packages as sub-packages. This new field will enable the composition of meta-packages that can deploy, publish, pull, and create multiple packages together in a clean, efficient, and version-resilient way. The solution will support shared layers between packages and proper variable propagation, addressing the brittleness and inefficiency of current community workarounds. Implementation will follow the design proposed in [Zarf Issue #1024](https://github.com/defenseunicorns/zarf/issues/1024).","## Decision
+
+> :warning: **NOTE**: This functionality was migrated to [uds-cli](https://github.com/defenseunicorns/uds-cli) - this ADR is kept here for historical purposes.
+
+The current proposition (subject to change before acceptance) is **Zarf Bundles**, which a following PR will focus on and create a POC of.
+
+In essence the `zarf-bundle.yaml` would look something like so:
+
+```yaml
+metadata:
+  name: omnibus
+  description: an example Zarf bundle
+  version: 0.0.1
+  architecture: amd64
+
+packages:
+  - repository: localhost:888/init
+    ref: """
+"## Context
+
+The idea of `hooks` is to provide a way for cluster maintainers to register functionality that runs during the deployment lifecycle. Zarf packages already have the concept of `actions` that can execute commands on the host machine's shell during certain package lifecycle events. As `actions` gain more adoption, the team has noticed they are being used to add functionality to Zarf in unexpected ways. We want `actions` to be a tool that extends upon the functionality of Zarf and its packages, not a tool that works around missing or clunky functionality.
+
+We want package creators to be able to create system agnostic packages by leveraging core Zarf functionality. The following is one such scenario:
+
+- _IF_ ECR is chosen as the external registry during `zarf init` / cluster creation, _THEN_ Zarf will seamlessly leverage ECR without requiring advanced user effort.
+
+Using ECR as a remote registry creates 2 problems that Zarf will need to solve:
+
+ 1. ECR authentication tokens expire after 12 hours and need to be refreshed. This means the cluster will need to constantly be refreshing its tokens and the user deploying packages will need to make sure they have a valid token.
+ 2. ECR Image Repositories do not support 'push-to-create'. This means we will need to explicitly create an image repository for every image that is being pushed within the Zarf package.
+
+Packages that get deployed onto a cluster initialized with ECR as its remote registry will need to make sure it solves these 2 problems.
+
+Currently there are 2 solutions:
+
+1. The package deployer solves the problem pre-deployment (creating needed repos, secrets, etc...)
+2. The package itself solves these problems with `actions` that are custom built for ECR clusters.
+
+Neither one of these current solutions are ideal. We don't want to require overly complex external + prior actions for Zarf package deployments, and we don't want package creators to have to create and distribute packages that are specific to ECR.
+
+Potential considerations:","## Decision 
+We will implement a `hooks` system in Zarf that allows cluster maintainers to register pre-defined, reusable scripts or actions that execute during specific stages of the deployment lifecycle. These hooks will be managed at the cluster level and integrated into Zarf’s initialization and deployment flows, enabling automatic handling of registry-specific requirements such as ECR repository creation and token refresh.
+
+For ECR specifically:
+- A post-init hook will ensure required ECR repositories are created for images defined in a Zarf package.
+- A periodic (e.g., cron-based) or pre-push hook will handle ECR authentication token refresh using AWS IAM credentials provided during `zarf init`.
+  
+These hooks will be part of the Zarf runtime rather than embedded in individual packages, ensuring that packages remain system-agnostic and portable across different registries and environments. This approach centralizes environment-specific logic where it belongs — at the infrastructure/cluster configuration level — while keeping package authors focused on declarative, universal packaging.
+
+This solution avoids pushing complexity onto package creators or end users and aligns with the principle that core Zarf functionality should eliminate the need for workarounds via `actions`. The implementation will be documented and configurable via the `zarf.yaml` init configuration, with extensibility to support other registries and use cases in the future.","## Decision
+
+[Pepr](https://github.com/defenseunicorns/pepr) will be used to enable custom, or environment-specific, automation tasks to be integrated in the Zarf package deployment lifecycle. Pepr also allows the Zarf codebase to remain agnostic to any third-party APIs or dependencies that may be used.
+
+A `--skip-webhooks` flag has been added to `zarf package deploy` to allow users to opt out of Zarf checking and waiting for any webhooks to complete during package deployments."
+"## Context
+
+We need a way to decouple transformations from Zarf. We know the Zarf transformation library is battle tested, hardened, and reliable. As Pepr takes admission responsibilities from the Zarf Agent, we need a way to synchronize the TypeScript with the Go code instead of maintaining two disparate libraries which will be expected to grow.
+
+We considered:
+
+- WASM
+- gRPC
+- REST
+- Rewrite the code in TypeScript","## Decision
+We will use WebAssembly (WASM) to run the Zarf transformation library within Pepr. This approach allows us to compile the existing, battle-tested Go transformation logic into WASM format, enabling direct execution in the TypeScript runtime without maintaining duplicate codebases. It ensures consistency between environments, leverages the maturity of the Go library, and avoids the network overhead and complexity associated with gRPC or REST solutions. A proof-of-concept has validated feasibility and performance suitability.","## Decision
+
+We conformed around using WASM because we can leverage the battle tested transform library from Zarf without incurring network overhead cost from pod to pod or container to container communications."
+"## Context
+
+Zarf natively supports creating the following package sources:
+
+- Local Tarball (`.tar` and `.tar.zst`)
+  - Via `zarf package create <dir> -o <dir>`, with compression determined by `metadata.uncompressed` in `zarf.yaml`
+- Split Tarball (`.part...`)
+  - Via `zarf package create <dir> --max-package-size <size> -o <dir>`
+- OCI package (`oci://`)
+  - Via `zarf package publish <source> oci://` or `zarf package create <dir> -o oci://...`
+- In-cluster (Deployed) package
+  - Post `zarf package deploy <source>` the package is show in `zarf package list`
+
+However, the current loading abilities of Zarf have been inconsistent depending upon the action specified. For example:
+
+- Split tarball packages could be created, deployed, but not inspected, or removed
+- In-cluster packages could be removed (by name), but not inspected
+- HTTPs URLs could be deployed, but not inspected, or removed
+- etc...","## Decision 
+We will standardize Zarf's package loading capabilities across all supported package sources. This includes enabling consistent support for inspect, deploy, and remove operations on all package types: local tarballs, split tarballs, OCI packages, in-cluster packages, and HTTPS URL references. The implementation will ensure uniform behavior regardless of the package source, improving usability and reliability of the Zarf CLI. Work will be tracked via the Zarf upstream issue tracker with a target resolution in v0.35.0.","## Decision
+
+Zarf must support the `deploy`, `inspect`, `remove`, `publish`, `pull`, and `mirror-resources` commands across package sources.
+
+For common behavior to be exhibited by all sources, the `PackageSource` interface has been introduced along with the `layout` library.
+
+```go
+// src/pkg/packager/sources/new.go
+
+// PackageSource is an interface for package sources.
+//
+// While this interface defines three functions, LoadPackage, LoadPackageMetadata, and Collect; only one of them should be used within a packager function.
+//
+// These functions currently do not promise repeatability due to the side effect nature of loading a package.
+type PackageSource interface {
+    // LoadPackage loads a package from a source.
+    //
+    // For the default sources included in Zarf, package integrity (checksums, signatures, etc.) is validated during this function
+    // and expects the package structure to follow the default Zarf package structure.
+    //
+    // If your package does not follow the default Zarf package structure, you will need to implement your own source.
+    LoadPackage(*layout.PackagePaths) error
+    // LoadPackageMetadata loads a package's metadata from a source.
+    //
+    // This function follows the same principles as LoadPackage, with a few exceptions:
+    //
+    // - Package integrity validation will display a warning instead of returning an error if
+    //   the package is signed but no public key is provided. This is to allow for the inspection and removal of packages
+    //   that are signed but the user does not have the public key for.
+    LoadPackageMetadata(dst *layout.PackagePaths, wantSBOM bool, skipValidation bool) error
+
+    // Collect relocates a package from its source to a tarball in a given destination directory.
+    Collect(destinationDirectory string) (tarball string, err error)
+}
+```
+
+The following sources have been implemented:
+
+- Local Tarball (`.tar` and `.tar.zst`)
+- Split Tarball (`.part...`)
+- HTTP(S) URL
+- Published OCI package (`oci://`)
+- In-cluster (Deployed) package (`inspect` and `remove` only)
+
+The `layout` library contains the `PackagePaths` struct which supersedes the prior `TempPaths` struct. This new struct contains access methods to different aspects of Zarf's internal package layout. This struct is passed to the `PackageSource` functions to allow for the loading of packages into the correct layout. In order for a package to be loaded into the correct layout, the package must follow the default Zarf package structure, or be converted to the expected structure during loading operations."
+"## Context
+
+Zarf has supports composing components together between packages on `zarf package create` since v0.16.0.  This has allowed package creators to make more complex packages from smaller reusable bits.  As this functionality grew however there were a few problems that developed:
+
+1. Import chains did not handle scaling to larger numbers of layers with test coverage usually only covering the first import.
+2. When OCI skeletons were added they were largely bolted on after the fact without rethinking how they would impact composability.
+3. Component filtering via the `only` filter was not implemented in a central location leading to bugs with create-time filters.","## Decision 
+We will refactor the component composition logic to centralize filtering and import handling, ensuring consistent behavior across all composition operations. This will include redesigning the OCI skeleton integration to be a first-class part of the composition pipeline, and implementing comprehensive test coverage for multi-layer import chains. The changes will be structured to enforce validation at each layer of composition, preventing invalid configurations from propagating through long import chains.","## Decision
+
+We decided to separate composability into its own package that represents a composability import chain as a doubly linked list.  This allows us to represent the whole chain as it exists relative to the ""head"" Zarf package (the definition that Zarf was asked to build) to more easily handle packages that are in different locations (such as OCI skeletons in one's cache).  We also run the compose functions on all components so that the additional filter logic that is needed for these components can be handled more concisely and built upon (as it might for `flavor` https://github.com/defenseunicorns/zarf/issues/2101)."
+"## Context
+
+> Feature request: <https://github.com/defenseunicorns/zarf/issues/2169>
+
+The current package development lifecycle is:
+
+1. Create a `zarf.yaml` file and add components
+2. Create a package with `zarf package create <dir>`
+3. Debug any create errors and resolve by editing `zarf.yaml` and repeating step 2
+4. Run `zarf init` to initialize the cluster
+5. Deploy the package with `zarf package deploy <tarball>`
+6. Debug any deploy errors and resolve by editing `zarf.yaml` and repeating step 2 or 5
+
+If there are deployment errors, the common pattern is to reset the cluster (ex: `k3d cluster delete && k3d cluster create`) and repeat steps 4-6. Re-initializing the cluster, recreating the package, and redeploying the package is tedious and time consuming; especially when the package is large or the change was small.
+
+`zarf package create` is designed around air-gapped environments where the package is created in one environment and deployed in another. Due to this architecture, a package's dependencies _must_ be retrieved and assembled _each_ and _every_ time.
+
+There already exists the concept of [`YOLO` mode](0010-yolo-mode.md), which can build + deploy a package without the need for `zarf init`, and builds without fetching certain heavy dependencies (like Docker images). However, `YOLO` mode is not exposed via CLI flags, and is meant to develop and deploy packages in fully connected environments.","## Decision 
+We will introduce a new `--dev` flag to the `zarf package create` command that enables a development mode optimizing the package creation and deployment workflow for rapid iteration. This mode will:
+
+- Skip retrieval of heavy dependencies (e.g., Docker images) that are already present in the target environment, similar to existing YOLO mode behavior.
+- Generate a lightweight, non-airgap-ready package intended only for use in connected development environments.
+- Allow components to declare dev-time overrides (e.g., local image sources, mocked services).
+- Integrate with `zarf deploy` to support fast redeployment without full package rebuilds when only manifests or scripts change.
+
+The `--dev` flag will be documented as intended solely for local development and testing, not for production or air-gapped deployments. This change will streamline the edit-create-deploy-debug cycle while preserving the existing air-gapped capabilities for production use.","## Decision
+
+Introduce a `dev deploy` command that will combine the lifecycle of `package create` and `package deploy` into a single command. This command will:
+
+- Not result in a re-usable tarball / OCI artifact
+- Not have any interactive prompts
+- Not require `zarf init` to be run by default (override-able with a CLI flag)
+- Be able to create+deploy a package in either YOLO mode (default) or prod mode (exposed via a CLI flag)
+- Only build + deploy components that _will_ be deployed (contrasting with `package create` which builds _all_ components regardless of whether they will be deployed)"
+"## Context
+
+The process of deploying applications with Helm charts in Kubernetes environments often necessitates the customization of chart values to align with specific operational or environmental requirements. The current method for customizing these valuesÃÂ¡ÃÂªeither through manual edits or `","## Decision  
+We will standardize the use of environment-specific `values.yaml` override files stored in a dedicated, version-controlled directory (e.g., `environments/`) to manage Helm chart customizations. These override files will be applied during deployment via CI/CD pipelines using the `--values` flag in Helm commands. This approach ensures reproducibility, auditability, and consistency across environments while eliminating manual edits. Changes to configuration will require pull requests and peer review, improving change management and reducing risk. [Reference: Helm Best Practices, Mozilla Infra Guidelines]","## Decision
+
+To address this issue, we propose the introduction of a feature designed to simplify the process of overriding chart values at the time of deployment. This feature would allow users to easily specify overrides for any chart values directly via command-line arguments, eliminating the need to alter the chart's default values file or manage multiple command-line arguments for each override.
+
+Key aspects of the proposed implementation include:
+- Use existing `--set`  flags to specify overrides for chart values.
+- The ability to list all overrides in a structured and easily understandable format within `zarf.yaml`.
+- Ensuring that during deployment, these specified overrides take precedence over the chart's default values, thus facilitating customized deployments without necessitating permanent modifications to the chart."
+"## Context
+
+The current documentation site is built with Docusaurus 2. While Docusaurus has served us well, it has some limitations, primarily around performance and dependency management.","## Decision 
+We will migrate the documentation site from Docusaurus 2 to Astro. Astro offers better performance through partial hydration, improved build times, and more flexible dependency management. This change will result in faster page loads, a smoother developer experience, and reduced bundle sizes. The migration will be carried out incrementally, with content ported section by section to minimize disruption. [GitHub issue](https://github.com/org/repo/issues/123)","## Decision
+
+To simplify the development process and improve the performance of the documentation site, we have decided to migrate to Starlight. This is based upon a number of factors:
+
+- Small dependency footprint.
+- Fast performance.
+- Easy to extend with custom components.
+- Built-in support for MDX.
+- The majority of the features we need are built-in and require minimal configuration.
+  - Client-side static site search
+  - Sane spacing and typography
+  - Dark mode + light mode
+  - Syntax highlighting
+  - Responsive design + mobile-friendly
+  - Tabs + Admonitions"

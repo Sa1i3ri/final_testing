@@ -1,16 +1,16 @@
 import os
-
 import pandas as pd
 from icecream import ic
 from rouge_score import rouge_scorer, scoring
-import numpy as np
 import service.chat.chat as ct
 import zeroShot.zeroShot as zs
 import fewShot.fewShot as fs
+import service.retriever.retriever as rag
 from service.processData.processData import split_adr_content
 from nltk.translate.bleu_score import sentence_bleu
 from nltk.translate.meteor_score import meteor_score
 from bert_score import score as bert_score
+from service.PromptProvider import PromptProvider
 
 
 def compute_rouge(predictions, references):
@@ -47,7 +47,7 @@ class evaluation:
     def __init__(self):
         pass
 
-    def print_results(self,predictions, references):
+    def print_results(self,predictions, references,model_name='qwen-plus' , experience = "0-shot"):
         rouge_scores = compute_rouge(predictions, references)
         ic(rouge_scores)
         bleu_scores = compute_bleu(predictions, references)
@@ -69,27 +69,27 @@ class evaluation:
         })
         df = pd.DataFrame(data)
 
-        output_file = 'D:\\Code\\Final\\final\\result\\qwen-plus\\scores.csv'
+        output_file = f'D:\\Code\\Final\\final\\result\\{model_name}\\{experience}\\scores.csv'
         df.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
 
-    def store_output(self, model_name, context, decision, predicted_decision):
+    def store_output(self,context, decision, predicted_decision, model_name,  experience = "0-shot"):
         model_name = model_name.replace('/', '_')
-        output_file = f'D:\\Code\\Final\\final\\result\\qwen-plus\\{model_name}.csv'
+        output_file = f'D:\\Code\\Final\\final\\result\\{model_name}\\{experience}\\result.csv'
+        self.print_results(predicted_decision, decision,model_name, experience)
         for ctx, dec, pred_dec in zip(context, decision, predicted_decision):
             df = pd.DataFrame([[ctx, dec, pred_dec]], columns=['context', 'decision', 'predicted_decision'])
             df.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
 
-    def start(self,input_file, model):
+    def start(self,input_file, model, experience, promptProvider: PromptProvider):
         df = pd.read_csv(input_file, encoding='latin1')
         chat = ct.chat("qwen-plus")
-        zeroShot =  zs.zeroShot()
-        for i, row in df.head(2).iterrows():
+        for i, row in df.iloc[-100:].iterrows():
             contexts = []
             decisions = []
             predicted_decisions = []
             content = row['md_content']
             context, predicted_decision = split_adr_content(content)
-            prompt = zeroShot.get_prompt(context)
+            prompt = promptProvider.get_prompt(context)
             decision = chat.chat(prompt).choices[0].message.content
             contexts.append(context)
             decisions.append(decision)
@@ -97,11 +97,12 @@ class evaluation:
             ic(f"Context: {context}")
             ic(f"Predicted Decision: {predicted_decision}")
             ic(f"Actual Decision: {decision}")
+            self.store_output([context], [decision], [predicted_decision], model, experience)
             print("--------------------------------------------------")
-            self.store_output(model, [context], [decision], [predicted_decision])
-            self.print_results(predicted_decisions, decisions)
 
 if __name__ == "__main__":
     evaluator = evaluation()
-    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model="qwen-plus")
+    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model="qwen-plus", experience="0-shot", promptProvider=zs.zeroShot())
+    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model="qwen-plus", experience="few-shot", promptProvider=fs.fewShot())
+    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model="qwen-plus", experience="rag", promptProvider=rag.retriever())
 
