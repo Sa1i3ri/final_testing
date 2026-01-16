@@ -74,7 +74,9 @@ class evaluation:
 
     def store_output(self,context, decision, predicted_decision, model_name,  experience = "0-shot"):
         model_name = model_name.replace('/', '_')
-        output_file = f'D:\\Code\\Final\\final\\result\\{model_name}\\{experience}\\result.csv'
+        output_dir = f'D:\\Code\\Final\\final\\result\\{model_name}\\{experience}'
+        os.makedirs(output_dir, exist_ok=True)
+        output_file = f'{output_dir}\\result.csv'
         self.print_results(predicted_decision, decision,model_name, experience)
         for ctx, dec, pred_dec in zip(context, decision, predicted_decision):
             df = pd.DataFrame([[ctx, dec, pred_dec]], columns=['context', 'decision', 'predicted_decision'])
@@ -82,13 +84,13 @@ class evaluation:
 
     def start(self,input_file, model, experience, promptProvider: PromptProvider):
         df = pd.read_csv(input_file, encoding='latin1')
-        chat = ct.chat("qwen-plus")
-        for i, row in df.iloc[-100:].iterrows():
+        chat = ct.chat(model=model)
+        for i, row in df.iloc[-2:].iterrows():
             contexts = []
             decisions = []
             predicted_decisions = []
-            content = row['md_content']
-            context, predicted_decision = split_adr_content(content)
+            context = row['context']
+            predicted_decision = row['decision']
             prompt = promptProvider.get_prompt(context)
             decision = chat.chat(prompt).choices[0].message.content
             contexts.append(context)
@@ -102,7 +104,8 @@ class evaluation:
 
 if __name__ == "__main__":
     evaluator = evaluation()
-    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model="qwen-plus", experience="0-shot", promptProvider=zs.zeroShot())
-    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model="qwen-plus", experience="few-shot", promptProvider=fs.fewShot())
-    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model="qwen-plus", experience="rag", promptProvider=rag.retriever())
+    model = "gpt-4"
+    # evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model=model, experience="0-shot", promptProvider=zs.zeroShot())
+    # evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model=model, experience="few-shot", promptProvider=fs.fewShot())
+    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model=model, experience="rag", promptProvider=rag.retriever())
 

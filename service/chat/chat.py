@@ -6,12 +6,21 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+
 class chat:
     def __init__(self, model):
         self.client = None
         self.api_key = None
         self.load_env()
         self.model = model
+        self.model_url_map = {
+            "qwen_plus": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "qwen_max": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            "doubao-seed-1-8-251228": "https://ark.cn-beijing.volces.com/api/v3",
+            "gpt-3.5-turbo": "https://api.bianxie.ai/v1",
+            "gpt-4": "https://api.bianxie.ai/v1"
+        }
         self.initialize()
 
     def load_env(self):
@@ -19,26 +28,12 @@ class chat:
         self.api_key = os.getenv("API_KEY")
 
     def initialize(self):
-
         try:
-            llm_params = {
-                "api_key": self.api_key,
-                "model": os.getenv("LLM_MODEL_NAME", self.model)
-            }
-
-            env_model_url = os.getenv("LLM_MODEL_URL")
-            if env_model_url:
-                llm_params["base_url"] = env_model_url
-                logger.info(f"使用环境变量中的模型URL: {env_model_url}")
-            else:
-                # 默认使用通义千问官方API地址
-                llm_params["base_url"] = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-                logger.info("使用默认的通义千问官方API地址")
 
             # 初始化OpenAI兼容接口的模型
             self.client = OpenAI(
                 api_key=self.api_key,
-                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+                base_url=self.model_url_map[self.model],
             )
 
 

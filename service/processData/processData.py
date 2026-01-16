@@ -36,23 +36,30 @@ def split_adr_content(md_content):
 
     return context, decision
 
+def split_data(file_path, output_file):
+    df = pd.read_csv(file_path, encoding='latin1')
+    for i, row in df.iterrows():
+        content = row['md_content']
+        context, decision = split_adr_content(content)
+        new_df = pd.DataFrame([[content, context, decision]], columns=['md_content', 'context', 'decision'])
+        new_df.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
+
+
+
 def str_to_bool(s: str) -> bool:
     return s.lower() in ['true', '1', 'yes', 'y']
 
-def filter_csv_content():
-    # 读取原始 CSV 文件
-    input_file = "D:\Code\Final\\final\\filtered_100stars_data.csv"  # 替换为你的文件名
-    output_file = "D:\Code\Final\\final\\filtered_100stars_final_data.csv"  # 输出文件名
+def filter_csv_content(input_file, output_file):
     df = pd.read_csv(input_file, encoding='latin1')
     chat = ct.chat("qwen-plus")
     num = 0
     # 遍历每一条记录
     for i, row in df.iterrows():
-        content = row['md_content']
-        context, decision = split_adr_content(content)
+        context = row['context']
+        decision = row['decision']
         custom_prompt = [
             {"role": "system",
-             "content": "This is an architecture decision record. Determine if the ADR is of good quality,instead of just stating what tools were used. If the quality is good, return true; otherwise, return false."},
+             "content": "这里有一份architecture decision record。专注于它的context和decision，如果其中有任何一个是空的，或者你认为这个adr的decision质量不高，请返回False，否则返回True。只需要返回True或False，不需要其他解释。"},
             {"role": "user",
              "content": f"## Context \n{context}\n\n## Decision \n{decision}"}
         ]
@@ -63,6 +70,14 @@ def filter_csv_content():
             print(f"Accepted rows count: {num}")
             # 将满足条件的行追加到新的 CSV 文件
             row.to_frame().T.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
+
+if __name__ == "__main__":
+    input_file = "D:\Code\Final\\final\\split_data.csv"
+    output_file = "D:\Code\Final\\final\\filtered_final_data.csv"
+    # split_data("D:\Code\Final\\final\\filtered_data.csv", "D:\Code\Final\\final\\split_data.csv")
+    filter_csv_content(input_file, output_file)
+
+
 
 
 
