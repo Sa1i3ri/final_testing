@@ -19,7 +19,10 @@ class chat:
             "qwen_max": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "doubao-seed-1-8-251228": "https://ark.cn-beijing.volces.com/api/v3",
             "gpt-3.5-turbo": "https://api.bianxie.ai/v1",
-            "gpt-4": "https://api.bianxie.ai/v1"
+            "gpt-4": "https://api.bianxie.ai/v1",
+            "gemini-1.5-flash": "https://api.bianxie.ai/v1",
+            "claude-3-5-haiku-20241022": "https://api.bianxie.ai/v1",
+            "gemini-1.5-pro": "https://api.bianxie.ai/v1",
         }
         self.initialize()
 

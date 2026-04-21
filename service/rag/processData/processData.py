@@ -4,8 +4,8 @@ import os
 
 def filter_csv_stars():
     # 读取原始 CSV 文件
-    input_file = "D:\Code\Final\\final\\data.csv"  # 替换为你的文件名
-    output_file = "D:\Code\Final\\final\\filtered_100stars_data.csv"  # 输出文件名
+    input_file = "/data.csv"  # 替换为你的文件名
+    output_file = "/filtered_100stars_data.csv"  # 输出文件名
 
     # 加载 CSV 文件到 DataFrame
     df = pd.read_csv(input_file, encoding='latin1')
@@ -70,12 +70,6 @@ def filter_csv_content(input_file, output_file):
             print(f"Accepted rows count: {num}")
             # 将满足条件的行追加到新的 CSV 文件
             row.to_frame().T.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
-
-if __name__ == "__main__":
-    input_file = "D:\Code\Final\\final\\split_data.csv"
-    output_file = "D:\Code\Final\\final\\filtered_final_data.csv"
-    # split_data("D:\Code\Final\\final\\filtered_data.csv", "D:\Code\Final\\final\\split_data.csv")
-    filter_csv_content(input_file, output_file)
 
 
 

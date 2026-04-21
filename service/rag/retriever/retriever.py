@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 import logging
-import service.embeddings.embedding as em
+import service.rag.embeddings.embedding as em
 from service.PromptProvider import PromptProvider
-from service.processData.processData import split_adr_content
+from service.rag.processData.processData import split_adr_content
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)

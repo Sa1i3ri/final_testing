@@ -3,10 +3,6 @@ import pandas as pd
 from icecream import ic
 from rouge_score import rouge_scorer, scoring
 import service.chat.chat as ct
-import zeroShot.zeroShot as zs
-import fewShot.fewShot as fs
-import service.retriever.retriever as rag
-from service.processData.processData import split_adr_content
 from nltk.translate.bleu_score import sentence_bleu
 from nltk.translate.meteor_score import meteor_score
 from bert_score import score as bert_score
@@ -85,7 +81,7 @@ class evaluation:
     def start(self,input_file, model, experience, promptProvider: PromptProvider):
         df = pd.read_csv(input_file, encoding='latin1')
         chat = ct.chat(model=model)
-        for i, row in df.iloc[-2:].iterrows():
+        for i, row in df.iloc[-100:].iterrows():
             contexts = []
             decisions = []
             predicted_decisions = []
@@ -101,11 +97,3 @@ class evaluation:
             ic(f"Actual Decision: {decision}")
             self.store_output([context], [decision], [predicted_decision], model, experience)
             print("--------------------------------------------------")
-
-if __name__ == "__main__":
-    evaluator = evaluation()
-    model = "gpt-4"
-    # evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model=model, experience="0-shot", promptProvider=zs.zeroShot())
-    # evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model=model, experience="few-shot", promptProvider=fs.fewShot())
-    evaluator.start(input_file="D:\Code\Final\\final\\filtered_final_data.csv", model=model, experience="rag", promptProvider=rag.retriever())
-
