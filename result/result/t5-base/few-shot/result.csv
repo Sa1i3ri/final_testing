@@ -1,0 +1,324 @@
+context,decision,predicted_decision
+"## Context
+
+Zarf has supports composing components together between packages on `zarf package create` since v0.16.0.  This has allowed package creators to make more complex packages from smaller reusable bits.  As this functionality grew however there were a few problems that developed:
+
+1. Import chains did not handle scaling to larger numbers of layers with test coverage usually only covering the first import.
+2. When OCI skeletons were added they were largely bolted on after the fact without rethinking how they would impact composability.
+3. Component filtering via the `only` filter was not implemented in a central location leading to bugs with create-time filters.",n- We want to be as transparent as possible in our decision-making process.n- We don't want decisions to be made unilaterally in a vacuum.n- We want to give our steering group the opportunity to review every major decision. ## Context Arac,"## Decision
+
+We decided to separate composability into its own package that represents a composability import chain as a doubly linked list.  This allows us to represent the whole chain as it exists relative to the ""head"" Zarf package (the definition that Zarf was asked to build) to more easily handle packages that are in different locations (such as OCI skeletons in one's cache).  We also run the compose functions on all components so that the additional filter logic that is needed for these components can be handled more concisely and built upon (as it might for `flavor` https://github.com/defenseunicorns/zarf/issues/2101)."
+"## Context
+
+> Feature request: <https://github.com/defenseunicorns/zarf/issues/2169>
+
+The current package development lifecycle is:
+
+1. Create a `zarf.yaml` file and add components
+2. Create a package with `zarf package create <dir>`
+3. Debug any create errors and resolve by editing `zarf.yaml` and repeating step 2
+4. Run `zarf init` to initialize the cluster
+5. Deploy the package with `zarf package deploy <tarball>`
+6. Debug any deploy errors and resolve by editing `zarf.yaml` and repeating step 2 or 5
+
+If there are deployment errors, the common pattern is to reset the cluster (ex: `k3d cluster delete && k3d cluster create`) and repeat steps 4-6. Re-initializing the cluster, recreating the package, and redeploying the package is tedious and time consuming; especially when the package is large or the change was small.
+
+`zarf package create` is designed around air-gapped environments where the package is created in one environment and deployed in another. Due to this architecture, a package's dependencies _must_ be retrieved and assembled _each_ and _every_ time.
+
+There already exists the concept of [`YOLO` mode](0010-yolo-mode.md), which can build + deploy a package without the need for `zarf init`, and builds without fetching certain heavy dependencies (like Docker images). However, `YOLO` mode is not exposed via CLI flags, and is meant to develop and deploy packages in fully connected environments.",n- We want to be as transparent as possible in our decision-making process.n- We don't want decisions to be made unilaterally in a vacuum.n- We want to give our steering group the opportunity to review every major decision. ## Context Arac,"## Decision
+
+Introduce a `dev deploy` command that will combine the lifecycle of `package create` and `package deploy` into a single command. This command will:
+
+- Not result in a re-usable tarball / OCI artifact
+- Not have any interactive prompts
+- Not require `zarf init` to be run by default (override-able with a CLI flag)
+- Be able to create+deploy a package in either YOLO mode (default) or prod mode (exposed via a CLI flag)
+- Only build + deploy components that _will_ be deployed (contrasting with `package create` which builds _all_ components regardless of whether they will be deployed)"
+"## Context
+
+The current documentation site is built with Docusaurus 2. While Docusaurus has served us well, it has some limitations, primarily around performance and dependency management.",n- We want to be as transparent as possible in our decision-making process.n- We don't want decisions to be made unilaterally in a vacuum.n- We want to give our steering group the opportunity to review every major decision. ## Context Arac,"## Decision
+
+To simplify the development process and improve the performance of the documentation site, we have decided to migrate to Starlight. This is based upon a number of factors:
+
+- Small dependency footprint.
+- Fast performance.
+- Easy to extend with custom components.
+- Built-in support for MDX.
+- The majority of the features we need are built-in and require minimal configuration.
+  - Client-side static site search
+  - Sane spacing and typography
+  - Dark mode + light mode
+  - Syntax highlighting
+  - Responsive design + mobile-friendly
+  - Tabs + Admonitions"
+"## Context
+
+Zarf is currently using an in-house built logging solution which in turn depends on pterm. This solution is used to output information to the end user who is using the Zarf CLI. This output is for the most part formatted with the purpose of CLI user experience. Logging function calls are done both in the CLI specific code as well as in the packages. The logging is implemented in such a way that different levels exist with different impacts and log destinations. A common pattern that is used is to call `message.Fatal` whenever an error occurs. This will output the message to STDERR while writing the actual error message to a debug log and exiting the program. Exiting the program in this manner makes unit testing difficult while also skipping proper context handling and skipping any clean-up that was intended to run before exiting the program. Some logging components like the progress bar and spinner are accessed through a shared global state that is not thread safe. The coupling to logging becomes complicated as disabling the progress bar is a challenge while multi threading these functions which access the global state resulting in complicated access patterns.",n- We want to be as transparent as possible in our decision-making process.n- We don't want decisions to be made unilaterally in a vacuum.n- We want to give our steering group the opportunity to review every major decision. ## Context Arac,"## Decision
+
+I am proposing to completely refactor the logging functionality to follow a more standardized format using the newish slog interfaces. On top of that we would refactor the current internationalization by converting them to standardized errors.
+
+* Replace the message package with a slog interface.
+* Replace the lang package with static errors.
+* Remove any use of `message.Fatal` and instead return errors.
+* Refactor use of `message.WarnErr` to either return error or to log the error.
+* Refactor existing functions that print formatted outputs to defer the printing to the CLI.
+* Define a new interface for spinner and progress bar that is passed in as a function parameter.
+
+The message package currently exports the following functions which should be replaced by its logr counterpart.
+
+| Function | Replacement | Comment |
+| --- | --- | --- |
+| ZarfCommand | Info | Just formats a slice as a command. |
+| Command | Info | Outputs a command with a prefix and style. |
+| Debug | Debug | |
+| Debugf | Debug | |
+| ErrorWebf | N/A | Not used anywhere. |
+| Warn | Warn | |
+| Warnf | Warn | |
+| WarnErr | Warn | |
+| WarnErrf | Warn | |
+| Fatal | N/A | Should not be used. |
+| Fatalf | N/A | Should not be used. |
+| Info | Info | |
+| Infof | Info | |
+| Success | Info | Seems to be a info log with a checkmark prefix. |
+| Successf | Info | Seems to be a info log with a checkmark prefix. |
+| Question | ? | Open question how to resolve this. |
+| Questionf | ? | Open question how to resolve this. |
+| Note | Info | Should just be an info or maybe a debug log. |
+| Notef | Info | Should just be an info or maybe a debug log. |
+| Title | ? | Not sure how this should be replaced as it formats with separator. |
+| HeaderInfof | ? | |
+| HorizontalRule | ? | |
+| JSONValue | N/A | Should be replaced with a marshal. |
+| Paragraph | ? | |
+| Paragraphn | ? | |
+| PrintDiff | ? | |
+| Table | ? | Need to come up with a good syntax for functions to return output that can print as a table. |
+| ColorWrap | ? | Should this be used? | 
+| PrintConnectStringTable | N/A | This logic should not exist in the message package. |
+| PrintCredentialTable | N/A | This logic should not exist in the message package. |
+| PrintComponentCredential | N/A | This logic should not exist in the message package. |
+| PrintCredentialUpdates | N/A | This logic should not exist in the message package. |
+| Spinner | Interface | New Spinner interface. |
+| ProgressBar | Interface | New progress bar interface. |
+
+The majority of simple logging changes should be possible with little signature changes. Replacing the existing output with a slog interface would allow other implementations to be used. A challenge initially may be the changes to table output formatting to make it work properly. This change will require some refactoring of existing code. A requirement for the changes is that they have to improve the UX for users looking at log files. As I understand the present day the spinners will cause a new line everytime they update, resulting in a lot of bloat. A goal should be to make sure that this does not happen in the future.
+
+Spinners and progress bars however are a bit more challenging. They need to be refactored so that they are no longer instantiated outside of the CLI code. They should instead be passed as a function parameter to each function that needs them. A good example of a project that solves the problem in a similar manner is Kind. In Kind they create a [status object from the logger](https://github.com/kubernetes-sigs/kind/blob/7799e72306db315ea4f4b1cac90ff68404da4f28/pkg/internal/cli/status.go#L39) which they then [pass to where it is needed](https://github.com/kubernetes-sigs/kind/blob/7799e72306db315ea4f4b1cac90ff68404da4f28/pkg/cluster/internal/create/create.go#L133). Doing so results in a single status object created which is reused where ever it is needed. A lot of inspiration can be take from how Kind deals with CLI output. While they use klog instead of slog there are a lot of similarities. They have for example a check if the output is in a terminal or not, and will disable the spinner accordingly. 
+
+Here is a suggestion for how a thread safe spinner could be implemented with a shared logger. This also allows for parallel spinners and progress bars.
+
+```golang
+package main
+
+import (
+	""context""
+	""fmt""
+	""io""
+	""log/slog""
+	""os""
+	""sync""
+	""time""
+
+	""github.com/pterm/pterm""
+)
+
+func main() {
+	err := run()
+	if err != nil {
+		panic(err)
+	}
+}
+
+func run() error {
+	h := NewPtermHandler(os.Stderr)
+	log := slog.New(h)
+
+	log.Info(""before"")
+
+	spinner := NewSpinner(log)
+	spinner.Update(""Running some job"")
+	log.Info(""after"")
+	time.Sleep(1 * time.Second)
+	spinner.Update(""Doing some update"")
+
+	time.Sleep(2 * time.Second)
+
+	spinner.Succeed()
+
+	time.Sleep(2 * time.Second)
+
+	return nil
+}
+
+type PtermHandler struct {
+	printer *pterm.MultiPrinter
+	attrs   []slog.Attr
+	group   string
+}
+
+func NewPtermHandler(w io.Writer) *PtermHandler {
+	printer, _ := pterm.DefaultMultiPrinter.WithWriter(w).Start()
+	return &PtermHandler{
+		printer: printer,
+	}
+}
+
+func (h *PtermHandler) Enabled(context.Context, slog.Level) bool {
+	return true
+}
+
+func (h *PtermHandler) Handle(ctx context.Context, r slog.Record) error {
+	l := fmt.Sprintf(""%s: %s\n"", r.Level, r.Message)
+	_, err := h.printer.NewWriter().Write([]byte(l))
+	return err
+}
+
+func (h *PtermHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &PtermHandler{
+		printer: h.printer,
+		attrs:   append(h.attrs, attrs...),
+		group:   h.group,
+	}
+}
+
+func (h *PtermHandler) WithGroup(name string) slog.Handler {
+	return &PtermHandler{
+		printer: h.printer,
+		attrs:   h.attrs,
+		group:   name,
+	}
+}
+
+type Spinner struct {
+	sequence    []string
+	mx          sync.Mutex
+	log         *slog.Logger
+	printer     *pterm.MultiPrinter
+	firstStatus string
+	status      string
+	spinner     *pterm.SpinnerPrinter
+}
+
+func NewSpinner(log *slog.Logger) *Spinner {
+	h, ok := log.Handler().(*PtermHandler)
+	if !ok {
+		return &Spinner{
+			log: log,
+		}
+	}
+	return &Spinner{
+		sequence: []string{`  ? `, `  ? `, `  ? `, `  ? `, `  ? `, `  ? `, `  ? `, `  ? `, `  ? `, `  ? `},
+		log:      log,
+		printer:  h.printer,
+	}
+}
+
+func (s *Spinner) Update(status string) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	// Do not update if status is the same.
+	if s.status == status {
+		return
+	}
+	if s.firstStatus == """" {
+		s.firstStatus = status
+	}
+	s.status = status
+
+	// If no printer we log normally.
+	if s.printer == nil {
+		s.log.Info(status)
+		return
+	}
+
+	// Create or update the spinner.
+	if s.spinner == nil {
+		spinner, _ := pterm.DefaultSpinner.WithWriter(s.printer.NewWriter()).WithSequence(s.sequence...).Start(status)
+		s.spinner = spinner
+		return
+	}
+	s.spinner.UpdateText(status)
+}
+
+func (s *Spinner) Fail() {
+	s.mx.Lock()
+	defer s.mx.Lock()
+
+	if s.printer == nil {
+		return
+	}
+	s.spinner.Fail(s.firstStatus)
+}
+
+func (s *Spinner) Succeed() {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	if s.printer == nil {
+		return
+	}
+	s.spinner.Success(s.firstStatus)
+}
+```
+
+The work will most likely have to be split into a couple of steps.
+
+1. Remove any use of message fatal.
+2. Refactor table printing functions.
+3. Replace message logging with a structured logger.
+4. Replace spinner and progress bars."
+"## Context
+
+Zarf currently does not have explicit schema versions. Any schema changes are embedded into Zarf and can change with new versions. There are several examples of deprecated keys throughout Zarf's lifespan such as:
+
+- `setVariable` deprecated in favor of `setVariables`
+- `scripts` deprecated in favor of `actions`
+- `group` deprecated in favor of `flavor`, however these work functionally different and cannot be automatically migrated
+- `cosignKeyPath` deprecated in favor of specifying the key path at create time
+
+Zarf has not disabled any deprecated keys thus far. On create the user is always warned when using a deprecated field, however the field still exists in the schema and functions properly. Some of the deprecated keys can be migrated automatically as the old item is a subset or directly related to it's replacement. For example, setVariable is automatically migrated to a single item list of setVariables. This migration occurs on the zarf.yaml fed into the package during package create, however the original field is not deleted from the packaged zarf.yaml because the Zarf binary used in the airgap or delivery environment is not assumed to have the new schema fields that the deprecated key was migrated to.
+
+The release of v1 will provide an opportunity to delete deprecated features that Zarf has warned will be dropped in v1.
+
+Creating a v1 schema will allow Zarf to establish a contract with it's user base that features will be supported long term. When a feature is deprecated in the v1 schema, it will remain usable in the schema for the lifetime of v1.",n- We want to be as transparent as possible in our decision-making process.n- We don't want decisions to be made unilaterally in a vacuum.n- We want to give our steering group the opportunity to review every major decision. ## Context Arac,"## Decision
+
+Zarf will begin having proper schema versions. A top level key, `apiVersion`, will be introduced to allow users to specify the schema. At the release of v1 the only valid user input for `apiVersion` will be v1. Zarf will not allow users to build using the v0 schema. `zarf package create` will fail if the user has deprecated keys or if `apiVersion` is missing and the user will be instructed to run the new `zarf dev migrate-schema` command. `zarf dev migrate-schema` will automatically migrate deprecated fields in the users `zarf.yaml` where possible. It will also add the apiVersion key and set it to v1.
+
+The existing go types which comprise the Zarf schema will be moved to types/alpha and will never change. An updated copy of these types without the deprecated fields will be created in a package types/v1 and any future schema changes will affect these objects. Internally, Zarf will introduce translation functions which will take the alpha schema and return the v1 schema. From that point on, all function signatures that have a struct that is included in the Zarf schema will change from `types.structName` to `v1.structName`.
+
+All deprecated features will cause an error on create. Deprecated features with a direct migration path will still be deployed if the package was created with schema v1, as migrations will add the non deprecated fields. If a feature does not have a direct automatic migration path (cosignKeyPath & groups) the package will fail on deploy. This will happen until the alpha schema is entirely removed from Zarf, which will happen one year after v1 is released.
+
+At create time Zarf will package both a `zarf.yaml` and a `zarfv1.yaml`. If a `zarfv1.yaml` exists Zarf will use that. If a `zarfv1.yaml` does not exist, then Zarf will know that the package was created prior to v1 and use the regular `zarf.yaml`. If the package is deployed with v0 it will read the `zarf.yaml` as normal even if the package has a `zarfv1.yaml`. This will make it simpler to drop deprecated items with migration paths from the v1 schema while remaining backwards compatible as those deprecated items will exist in the `zarf.yaml`
+
+When Zarf introduces new keys that they are not ready to promise long term support for they will mark them as experimental in the schema. A key is assumed to be stable if it's not experimental or deprecated.
+
+There are several other keys Zarf will deprecate which will have automated migrations to new fields
+- `.metadata.aggregateChecksum` -> `.build.aggregateChecksum`
+- `.components[x].required` -> `.components[x].optional`. Optional will default to false. This is a change in behavior as currently `required` defaults to true. However, automatic migration will work since we can set optional to true on any components which do not already have required.
+- Metadata fields `image`, `source`, `documentation`, `url`, `authors`, `vendors` -> will become a map of `annotations`
+- `noWait` -> `wait` which will default to true. This change will happen on both `.components.[x].manifests` and `components.[x].charts`
+- `yolo` -> `airgap` which will default to true
+- `.components.[x].actions.[default/onAny].maxRetries` -> `.components.[x].actions.[default/onAny].retries`
+- `.components.[x].actions.[default/onAny].maxTotalSeconds` -> `.components.[x].actions.[default/onAny].timeout`, which must be in a [Go recognized duration string format](https://pkg.go.dev/time#ParseDuration)
+- charts will change to avoid [current confusion with keys](https://github.com/defenseunicorns/zarf/issues/2245). Exactly one of the following fields will exist for each `components.[x].charts`.
+```yaml
+  helm:
+    url: https://stefanprodan.github.io/podinfo
+    RepoName: podinfo # replaces repoName since it's only applicable for helm repos
+
+  git:
+    url: https://stefanprodan.github.io/podinfo
+    path: charts/podinfo
+
+  oci:
+    url: oci://ghcr.io/stefanprodan/charts/podinfo
+
+  local:
+   path: chart
+```
+- A new field called `.components.[x].healthChecks` will be introduced and will utilize [kstatus](https://github.com/kubernetes-sigs/cli-utils/blob/master/pkg/kstatus/README.md) to wait for resources to be ready after deployment. Read [#2718](https://github.com/zarf-dev/zarf/issues/2718) for more detail.
+- a new field `.components.[x].wait` will be introduced. It will default to true, and automatically run `healthchecks` for every object in the cluster.
+- `.components.[x].extensions` will be removed in favor of `zarf dev generate bigbang`. See #2875"

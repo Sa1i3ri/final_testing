@@ -7,7 +7,12 @@ from nltk.translate.bleu_score import sentence_bleu
 from nltk.translate.meteor_score import meteor_score
 from bert_score import score as bert_score
 from service.PromptProvider import PromptProvider
+import nltk
 
+# try:
+#     nltk.data.find('corpora/wordnet')
+# except LookupError:
+#     nltk.download('wordnet')
 
 def compute_rouge(predictions, references):
     scorer = rouge_scorer.RougeScorer(['rouge1'], use_stemmer=True)
@@ -65,14 +70,14 @@ class evaluation:
         })
         df = pd.DataFrame(data)
 
-        output_file = f'D:\\Code\\Final\\final\\result\\{model_name}\\{experience}\\scores.csv'
+        output_file = f'D:\Code\Final\\final\\result/{model_name}/{experience}/scores.csv'
         df.to_csv(output_file, mode='a', header=not os.path.exists(output_file), index=False)
 
     def store_output(self,context, decision, predicted_decision, model_name,  experience = "0-shot"):
         model_name = model_name.replace('/', '_')
-        output_dir = f'D:\\Code\\Final\\final\\result\\{model_name}\\{experience}'
+        output_dir = f'D:\Code\Final\\final\\result/{model_name}/{experience}'
         os.makedirs(output_dir, exist_ok=True)
-        output_file = f'{output_dir}\\result.csv'
+        output_file = f'{output_dir}/result.csv'
         self.print_results(predicted_decision, decision,model_name, experience)
         for ctx, dec, pred_dec in zip(context, decision, predicted_decision):
             df = pd.DataFrame([[ctx, dec, pred_dec]], columns=['context', 'decision', 'predicted_decision'])
@@ -81,13 +86,14 @@ class evaluation:
     def start(self,input_file, model, experience, promptProvider: PromptProvider):
         df = pd.read_csv(input_file, encoding='latin1')
         chat = ct.chat(model=model)
-        for i, row in df.iloc[-100:].iterrows():
+        for i, row in df.iloc[-5:].iterrows():
             contexts = []
             decisions = []
             predicted_decisions = []
             context = row['context']
             predicted_decision = row['decision']
             prompt = promptProvider.get_prompt(context)
+            ic(f"prompt: {prompt}")
             decision = chat.chat(prompt).choices[0].message.content
             contexts.append(context)
             decisions.append(decision)
